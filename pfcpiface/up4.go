@@ -34,10 +34,10 @@ var (
 // FIXME: it should not be here IMO
 // P4rtcInfo : P4 runtime interface settings.
 type P4rtcInfo struct {
-	AccessIP    string `json:"access_ip"`
-	P4rtcServer string `json:"p4rtc_server"`
-	P4rtcPort   string `json:"p4rtc_port"`
-	UEIP        string `json:"ue_ip_pool"`
+	AccessIP    string          `json:"access_ip"`
+	P4rtcServer string          `json:"p4rtc_server"`
+	P4rtcPort   string          `json:"p4rtc_port"`
+	UEIP        string          `json:"ue_ip_pool"`
 	QFIToTC     map[uint8]uint8 `json:"qfi_tc_mapping"`
 }
 
@@ -78,12 +78,12 @@ type meter struct {
 }
 
 type UP4 struct {
-	host            string
-	deviceID        uint64
-	timeout         uint32
-	accessIP        *net.IPNet
+	host     string
+	deviceID uint64
+	timeout  uint32
+	accessIP *net.IPNet
 
-	p4rtcInfo		P4rtcInfo
+	p4rtcInfo P4rtcInfo
 
 	enableEndMarker bool
 
@@ -1009,7 +1009,7 @@ func (up4 *UP4) resetMeters(qers []qer) {
 		if meter.meterType == meterTypeApplication {
 			up4.resetMeter(appMeter, meter)
 			up4.releaseAppMeterCellID(meter.uplinkCellID)
-			
+
 			if meter.downlinkCellID != meter.uplinkCellID {
 				up4.releaseAppMeterCellID(meter.downlinkCellID)
 			}

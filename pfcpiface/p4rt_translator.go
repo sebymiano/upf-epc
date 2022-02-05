@@ -61,7 +61,7 @@ const (
 	DefaultApplicationID = 0
 	// NoTC assuming bit<2> type of TC in UP4,
 	// it's safe to use 255 as "unspecified TC" value
-	NoTC                 = 255
+	NoTC = 255
 )
 
 type tunnelParams struct {
