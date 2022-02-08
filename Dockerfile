@@ -21,7 +21,8 @@ ARG CPU=native
 RUN apt-get update && \
     apt-get -y install --no-install-recommends \
         ca-certificates \
-        libelf-dev
+        libelf-dev sudo kmod \
+        linux-tools-common linux-tools-generic linux-tools-`uname -r`
         
 ARG MAKEFLAGS
 
@@ -64,7 +65,14 @@ RUN ./build_bess.sh && \
     cp core/modules/*.so /bin/modules && \
     mkdir -p /opt/bess && \
     cp -r bessctl pybess /opt/bess && \
-    cp -r core/pb /pb
+    cp -r core/pb /pb 
+    # mkdir -p /bin/kmod &> /dev/null && \
+    # ./core/kmod/install && \
+    # ls core/kmod
+
+RUN ./build.py kmod
+
+RUN cp core/kmod/bess.ko /bin/bess.ko
 
 # Stage bess: creates the runtime image of BESS
 FROM python:3.9.9-slim AS bess
@@ -75,7 +83,8 @@ RUN apt-get update && \
         iproute2 \
         iptables \
         iputils-ping \
-        tcpdump && \
+        tcpdump \
+        kmod && \
     rm -rf /var/lib/apt/lists/* && \
     pip install --no-cache-dir \
         flask \
@@ -91,7 +100,11 @@ RUN apt-get update && \
 COPY --from=bess-build /opt/bess /opt/bess
 COPY --from=bess-build /bin/bessd /bin/bessd
 COPY --from=bess-build /bin/modules /bin/modules
+COPY --from=bess-build /bin/bess.ko /bin/bess.ko
 COPY conf /opt/bess/bessctl/conf
+RUN rm -rf /bin/kmod
+RUN mkdir -p /bin/kmod
+RUN mv /bin/bess.ko /bin/kmod/bess.ko
 RUN ln -s /opt/bess/bessctl/bessctl /bin
 ENV PYTHONPATH="/opt/bess"
 WORKDIR /opt/bess/bessctl

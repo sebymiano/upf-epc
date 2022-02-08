@@ -17,12 +17,12 @@ metrics_port=8080
 mode="dpdk"
 #mode="af_xdp"
 #mode="af_packet"
-#mode="sim"
+# mode="sim"
 
 # Gateway interface(s)
 #
 # In the order of ("s1u" "sgi")
-ifaces=("ens803f2" "ens803f3")
+ifaces=("access" "core")
 
 # Static IP addresses of gateway interface(s) in cidr format
 #
@@ -32,7 +32,7 @@ ipaddrs=(198.18.0.1/30 198.19.0.1/30)
 # MAC addresses of gateway interface(s)
 #
 # In the order of (s1u sgi)
-macaddrs=(9e:b2:d3:34:ab:27 c2:9c:55:d4:8a:f6)
+macaddrs=(f8:f2:1e:b2:43:00 f8:f2:1e:b2:43:01)
 
 # Static IP addresses of the neighbors of gateway interface(s)
 #
@@ -42,7 +42,7 @@ nhipaddrs=(198.18.0.2 198.19.0.2)
 # Static MAC addresses of the neighbors of gateway interface(s)
 #
 # In the order of (n-s1u n-sgi)
-nhmacaddrs=(22:53:7a:15:58:50 22:53:7a:15:58:50)
+nhmacaddrs=(f8:f2:1e:b2:65:70 f8:f2:1e:b2:65:70)
 
 # IPv4 route table entries in cidr format per port
 #
@@ -111,7 +111,9 @@ sudo rm -rf /var/run/netns/pause
 make docker-build
 
 if [ "$mode" == 'dpdk' ]; then
-	DEVICES=${DEVICES:-'--device=/dev/vfio/48 --device=/dev/vfio/49 --device=/dev/vfio/vfio'}
+	DEVICES=${DEVICES:-'--device=/dev/vfio/88 --device=/dev/vfio/89 --device=/dev/vfio/vfio'}
+	# Devices for pktgen machine
+	# DEVICES=${DEVICES:-'--device=/dev/vfio/113 --device=/dev/vfio/114 --device=/dev/vfio/vfio'}
 	PRIVS='--cap-add IPC_LOCK'
 
 elif [ "$mode" == 'af_xdp' ]; then
@@ -152,7 +154,7 @@ fi
 
 # Run bessd
 docker run --name bess -td --restart unless-stopped \
-	--cpuset-cpus=12-13 \
+	--cpuset-cpus=3,5,7,9 \
 	--ulimit memlock=-1 -v /dev/hugepages:/dev/hugepages \
 	-v "$PWD/conf":/opt/bess/bessctl/conf \
 	--net container:pause \
@@ -163,7 +165,7 @@ docker run --name bess -td --restart unless-stopped \
 docker logs bess
 
 # Sleep for a couple of secs before setting up the pipeline
-sleep 10
+sleep 30
 docker exec bess ./bessctl run up4
 sleep 10
 

@@ -15,6 +15,11 @@ build_bess() {
 	eval $CMD
 }
 
+build_kmod() {
+	CMD="./build.py kmod"
+	eval $CMD
+}
+
 (return 2>/dev/null) && echo "Sourced" && return
 
 set -o errexit
@@ -23,3 +28,5 @@ set -o nounset
 
 echo "Building BESS..."
 build_bess
+# echo "Building Kmod..."
+# build_kmod

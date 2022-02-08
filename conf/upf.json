@@ -60,17 +60,17 @@
 
     "": "Gateway interfaces",
     "access": {
-        "ifname": "ens803f2"
+        "ifname": "access"
     },
 
     "": "UE IP Natting. Update the line below to `\"ip_masquerade\": \"<ip> [or <ip>]\"` to enable",
     "core": {
-        "ifname": "ens803f3",
+        "ifname": "core",
         "": "ip_masquerade: 18.0.0.1 or 18.0.0.2 or 18.0.0.3"
     },
 
     "": "Number of worker threads. Default: 1",
-    "workers": 1,
+    "workers": 8,
 
     "": "Parameters for handling outgoing requests",
     "max_req_retries": 5,
