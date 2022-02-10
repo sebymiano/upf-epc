@@ -20,7 +20,7 @@ Signed-off-by: Saikrishna Edupuganti <saikrishna.edupuganti@intel.com>
  2 files changed, 130 insertions(+)
 
 diff --git a/core/drivers/pmd.cc b/core/drivers/pmd.cc
-index fd4a7b05..4e14695b 100644
+index fd4a7b05..a13fc033 100644
 --- a/core/drivers/pmd.cc
 +++ b/core/drivers/pmd.cc
 @@ -32,6 +32,7 @@
@@ -31,7 +31,7 @@ index fd4a7b05..4e14695b 100644
  
  #include "../utils/ether.h"
  #include "../utils/format.h"
-@@ -199,6 +200,136 @@ static CommandResponse find_dpdk_vdev(const std::string &vdev,
+@@ -199,6 +200,135 @@ static CommandResponse find_dpdk_vdev(const std::string &vdev,
    return CommandSuccess();
  }
  
@@ -84,7 +84,6 @@ index fd4a7b05..4e14695b 100644
 +    return CommandFailure(EINVAL,
 +                          "Port %u: Failed to validate flow profile %u %s",
 +                          port_id, flow_profile, err.message);
-+
 +  handle = rte_flow_create(port_id, &attributes, items, actions, &err);
 +  if (handle == nullptr)
 +    return CommandFailure(EINVAL, "Port %u: Failed to create flow: Type %d (%s), message: %s (%s) (profile %u)", port_id,
@@ -114,11 +113,11 @@ index fd4a7b05..4e14695b 100644
 +      RTE_FLOW_ITEM_TYPE_GTPU, RTE_FLOW_ITEM_TYPE_IPV4,
 +      RTE_FLOW_ITEM_TYPE_END};
 +
-+  rte_flow_item_type N39_SA[] = {
-+      RTE_FLOW_ITEM_TYPE_ETH, RTE_FLOW_ITEM_TYPE_IPV4, RTE_FLOW_ITEM_TYPE_UDP,
-+      RTE_FLOW_ITEM_TYPE_GTPU, RTE_FLOW_ITEM_TYPE_GTP_PSC,
-+      RTE_FLOW_ITEM_TYPE_IPV4,
-+      RTE_FLOW_ITEM_TYPE_END};
++  // rte_flow_item_type N39_SA[] = {
++  //     RTE_FLOW_ITEM_TYPE_ETH, RTE_FLOW_ITEM_TYPE_IPV4, RTE_FLOW_ITEM_TYPE_UDP,
++  //     RTE_FLOW_ITEM_TYPE_GTPU, RTE_FLOW_ITEM_TYPE_GTP_PSC,
++  //     RTE_FLOW_ITEM_TYPE_IPV4,
++  //     RTE_FLOW_ITEM_TYPE_END};
 +
 +  rte_flow_item_type N6[] = {
 +      RTE_FLOW_ITEM_TYPE_ETH, RTE_FLOW_ITEM_TYPE_IPV4,
@@ -135,8 +134,8 @@ index fd4a7b05..4e14695b 100644
 +        return err;
 +      }
 +
-+      err = flow_create_one(port_id, flow_profile, NUM_ELEMENTS(N39_SA),
-+                            rss_types, N39_SA, num_rxq);
++      // err = flow_create_one(port_id, flow_profile, NUM_ELEMENTS(N39_SA),
++      //                       rss_types, N39_SA, num_rxq);
 +      break;
 +
 +    // N6 traffic
@@ -148,15 +147,15 @@ index fd4a7b05..4e14695b 100644
 +
 +    // N9 traffic with and without PDU Session container
 +    case profileN9:
-+      rss_types = ETH_RSS_IPV4 | ETH_RSS_L3_DST_ONLY;
-+      err = flow_create_one(port_id, flow_profile, NUM_ELEMENTS(N39_NSA),
-+                            rss_types, N39_NSA, num_rxq);
-+      if (err.error().code() != 0) {
-+        return err;
-+      }
++      // rss_types = ETH_RSS_IPV4 | ETH_RSS_L3_DST_ONLY;
++      // err = flow_create_one(port_id, flow_profile, NUM_ELEMENTS(N39_NSA),
++      //                       rss_types, N39_NSA, num_rxq);
++      // if (err.error().code() != 0) {
++      //   return err;
++      // }
 +
-+      err = flow_create_one(port_id, flow_profile, NUM_ELEMENTS(N39_SA),
-+                            rss_types, N39_SA, num_rxq);
++      // err = flow_create_one(port_id, flow_profile, NUM_ELEMENTS(N39_SA),
++      //                       rss_types, N39_SA, num_rxq);
 +      break;
 +
 +    default:
@@ -168,14 +167,11 @@ index fd4a7b05..4e14695b 100644
  CommandResponse PMDPort::Init(const bess::pb::PMDPortArg &arg) {
    dpdk_port_t ret_port_id = DPDK_PORT_UNKNOWN;
  
-@@ -339,6 +470,18 @@ CommandResponse PMDPort::Init(const bess::pb::PMDPortArg &arg) {
+@@ -339,6 +469,15 @@ CommandResponse PMDPort::Init(const bess::pb::PMDPortArg &arg) {
  
    driver_ = dev_info.driver_name ?: "unknown";
  
 +  if (arg.flow_profiles_size() > 0) {
-+    struct rte_flow_error rte_err;
-+    memset(&rte_err, 0, sizeof(rte_err));
-+    rte_flow_flush(ret_port_id, &rte_err);
 +    for (int i = 0; i < arg.flow_profiles_size(); ++i) {
 +      err = flow_create(ret_port_id, arg.flow_profiles(i), num_rxq);
 +      if (err.error().code() != 0) {
@@ -187,7 +183,7 @@ index fd4a7b05..4e14695b 100644
    return CommandSuccess();
  }
  
-@@ -389,6 +532,10 @@ restart:
+@@ -389,6 +528,10 @@ restart:
  }
  
  void PMDPort::DeInit() {
@@ -198,6 +194,7 @@ index fd4a7b05..4e14695b 100644
    rte_eth_dev_stop(dpdk_port_id_);
  
    if (hot_plugged_) {
+
 
 diff --git a/protobuf/ports/port_msg.proto b/protobuf/ports/port_msg.proto
 index e25f0943..3768bed8 100644

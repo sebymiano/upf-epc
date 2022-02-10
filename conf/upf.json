@@ -51,7 +51,7 @@
     "gtppsc": false,
 
     "": "Enable Intel Dynamic Device Personalization (DDP)",
-    "ddp": false,
+    "ddp": true,
 
     "": "Telemetrics-See this link for details: https://github.com/NetSys/bess/blob/master/bessctl/module_tests/timestamp.py",
     "measure_upf": true,
@@ -71,7 +71,7 @@
     },
 
     "": "Number of worker threads. Default: 1",
-    "workers": 2,
+    "workers": 4,
 
     "": "Parameters for handling outgoing requests",
     "max_req_retries": 5,

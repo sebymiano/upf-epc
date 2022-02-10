@@ -115,7 +115,7 @@ if [ "$mode" == 'dpdk' ]; then
 	DEVICES=${DEVICES:-'--device=/dev/vfio/88 --device=/dev/vfio/89 --device=/dev/vfio/vfio'}
 	# Devices for pktgen machine
 	# DEVICES=${DEVICES:-'--device=/dev/vfio/113 --device=/dev/vfio/114 --device=/dev/vfio/vfio'}
-	PRIVS='--cap-add IPC_LOCK'
+	PRIVS='--cap-add IPC_LOCK --privileged'
 
 elif [ "$mode" == 'af_xdp' ]; then
 	PRIVS='--privileged'
