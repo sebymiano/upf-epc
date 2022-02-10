@@ -32,7 +32,7 @@ ipaddrs=(198.18.0.1/30 198.19.0.1/30)
 # MAC addresses of gateway interface(s)
 #
 # In the order of (s1u sgi)
-macaddrs=(f8:f2:1e:b2:43:00 f8:f2:1e:b2:43:01)
+macaddrs=(b4:96:91:46:65:bc b4:96:91:46:65:be)
 
 # Static IP addresses of the neighbors of gateway interface(s)
 #
@@ -42,7 +42,7 @@ nhipaddrs=(198.18.0.2 198.19.0.2)
 # Static MAC addresses of the neighbors of gateway interface(s)
 #
 # In the order of (n-s1u n-sgi)
-nhmacaddrs=(f8:f2:1e:b2:65:70 f8:f2:1e:b2:65:70)
+nhmacaddrs=(b4:96:91:31:96:4c b4:96:91:31:96:4e)
 
 # IPv4 route table entries in cidr format per port
 #

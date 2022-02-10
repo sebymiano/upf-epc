@@ -70,9 +70,9 @@ RUN ./build_bess.sh && \
     # ./core/kmod/install && \
     # ls core/kmod
 
-RUN ./build.py kmod
+#RUN ./build.py kmod
 
-RUN cp core/kmod/bess.ko /bin/bess.ko
+#RUN cp core/kmod/bess.ko /bin/bess.ko
 
 # Stage bess: creates the runtime image of BESS
 FROM python:3.9.9-slim AS bess
@@ -100,11 +100,11 @@ RUN apt-get update && \
 COPY --from=bess-build /opt/bess /opt/bess
 COPY --from=bess-build /bin/bessd /bin/bessd
 COPY --from=bess-build /bin/modules /bin/modules
-COPY --from=bess-build /bin/bess.ko /bin/bess.ko
+#COPY --from=bess-build /bin/bess.ko /bin/bess.ko
 COPY conf /opt/bess/bessctl/conf
-RUN rm -rf /bin/kmod
-RUN mkdir -p /bin/kmod
-RUN mv /bin/bess.ko /bin/kmod/bess.ko
+#RUN rm -rf /bin/kmod
+#RUN mkdir -p /bin/kmod
+#RUN mv /bin/bess.ko /bin/kmod/bess.ko
 RUN ln -s /opt/bess/bessctl/bessctl /bin
 ENV PYTHONPATH="/opt/bess"
 WORKDIR /opt/bess/bessctl
