@@ -21,7 +21,7 @@ ARG CPU=native
 RUN apt-get update && \
     apt-get -y install --no-install-recommends \
         ca-certificates \
-        libelf-dev sudo kmod \
+        libelf-dev sudo kmod python3-pyverbs \
         linux-tools-common linux-tools-generic linux-tools-`uname -r`
         
 ARG MAKEFLAGS
@@ -38,8 +38,12 @@ RUN curl -L https://github.com/libbpf/libbpf/tarball/${LIBBPF_VER} | \
     make install && \
     ldconfig
 
-WORKDIR /bess
+WORKDIR /mellanox
+RUN curl -L wget https://content.mellanox.com/ofed/MLNX_OFED-5.4-3.1.0.0/MLNX_OFED_LINUX-5.4-3.1.0.0-ubuntu20.04-x86_64.tgz | \
+    tar xz -C . --strip-components=2
+RUN ./mlnxofedinstall --with-mft --with-mstflint --dpdk --upstream-libs --force
 
+WORKDIR /bess
 # Patch BESS, patch and build DPDK
 COPY patches/dpdk/* deps/
 RUN ./build.py dpdk
@@ -102,9 +106,9 @@ COPY --from=bess-build /bin/bessd /bin/bessd
 COPY --from=bess-build /bin/modules /bin/modules
 #COPY --from=bess-build /bin/bess.ko /bin/bess.ko
 COPY conf /opt/bess/bessctl/conf
-#RUN rm -rf /bin/kmod
-#RUN mkdir -p /bin/kmod
-#RUN mv /bin/bess.ko /bin/kmod/bess.ko
+# RUN rm -rf /bin/kmod
+# RUN mkdir -p /bin/kmod
+# RUN mv /bin/bess.ko /bin/kmod/bess.ko
 RUN ln -s /opt/bess/bessctl/bessctl /bin
 ENV PYTHONPATH="/opt/bess"
 WORKDIR /opt/bess/bessctl

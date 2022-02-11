@@ -22,7 +22,7 @@ mode="dpdk"
 # Gateway interface(s)
 #
 # In the order of ("s1u" "sgi")
-ifaces=("access" "core")
+ifaces=("ens1f0" "ens1f1")
 
 # Static IP addresses of gateway interface(s) in cidr format
 #
@@ -112,10 +112,12 @@ make docker-build
 
 if [ "$mode" == 'dpdk' ]; then
 	# Devices for DUT machine
-	DEVICES=${DEVICES:-'--device=/dev/vfio/88 --device=/dev/vfio/89 --device=/dev/vfio/vfio'}
+	#DEVICES=${DEVICES:-'--device=/dev/vfio/88 --device=/dev/vfio/89 --device=/dev/vfio/vfio'}
+	#DEVICES=${DEVICES:-'--device=/dev/vfio/69 --device=/dev/vfio/70 --device=/dev/vfio/vfio'}
 	# Devices for pktgen machine
-	# DEVICES=${DEVICES:-'--device=/dev/vfio/113 --device=/dev/vfio/114 --device=/dev/vfio/vfio'}
-	PRIVS='--cap-add IPC_LOCK --privileged'
+ 	#DEVICES=${DEVICES:-'--device=/dev/vfio/113 --device=/dev/vfio/114 --device=/dev/vfio/vfio'}
+	#DEVICES=${DEVICES:-'--device=ens1f0 --device=ens1f1'}
+	PRIVS='--privileged'
 
 elif [ "$mode" == 'af_xdp' ]; then
 	PRIVS='--privileged'
@@ -126,7 +128,6 @@ fi
 
 # Run pause
 docker run --name pause -td --restart unless-stopped \
-	-p $bessd_port:$bessd_port \
 	-p $gui_port:$gui_port \
 	-p $metrics_port:$metrics_port \
 	--hostname $(hostname) \
@@ -155,10 +156,10 @@ fi
 
 # Run bessd
 docker run --name bess -td --restart unless-stopped \
-	--cpuset-cpus=3,5,7,9,11,13,15,17 \
+	--cpuset-cpus=0,2,4,6,8,10,12,14 \
 	--ulimit memlock=-1 -v /dev/hugepages:/dev/hugepages \
 	-v "$PWD/conf":/opt/bess/bessctl/conf \
-	--net container:pause \
+	--net host \
 	$PRIVS \
 	$DEVICES \
 	upf-epc-bess:"$(<VERSION)" -grpc-url=0.0.0.0:$bessd_port
