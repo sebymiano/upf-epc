@@ -178,6 +178,7 @@ class Port:
                 # Initialize DPDK fastpath
                 fidx = dpdk_ports.get(mac_by_interface(name))
                 if fidx is None:
+                    print(dpdk_ports)
                     raise Exception(
                         'Registered port for {} not detected!'.format(name))
                 kwargs = {"port_id": fidx, "num_out_q": num_q, "num_inc_q": num_q, "hwcksum": self.hwcksum, "flow_profiles": self.flow_profiles}

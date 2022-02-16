@@ -159,6 +159,7 @@ docker run --name bess -td --restart unless-stopped \
 	--cpuset-cpus=0,2,4,6,8,10,12,14 \
 	--ulimit memlock=-1 -v /dev/hugepages:/dev/hugepages \
 	-v "$PWD/conf":/opt/bess/bessctl/conf \
+	-v /lib/firmware:/lib/firmware \
 	--net container:pause \
 	$PRIVS \
 	$DEVICES \

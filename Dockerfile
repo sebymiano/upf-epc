@@ -5,65 +5,32 @@
 # Multi-stage Dockerfile
 
 # Stage bess-deps: fetch BESS dependencies
-FROM ubuntu:latest AS bess-deps
+FROM ubuntu:20.04 AS bess-deps
+ARG CPU=native
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get -y install \
         ca-certificates python3-pip software-properties-common \
         libelf-dev sudo kmod python3-pyverbs curl python-is-python3 \
-        linux-tools-common linux-tools-generic linux-tools-`uname -r`
-
-# Stage bess-build: builds bess with its dependencies
-FROM bess-deps AS bess-build
-ARG CPU=native
-RUN apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends \
-        ca-certificates pkg-config git \
-        libelf-dev sudo kmod python3-pyverbs \
-        linux-tools-common linux-tools-generic linux-tools-`uname -r`
-        
-ARG MAKEFLAGS
-
-ENV PKG_CONFIG_PATH=/usr/lib64/pkgconfig
-
-# linux ver should match target machine's kernel
-WORKDIR /libbpf
-ARG LIBBPF_VER=v0.3
-# ARG LIBBPF_VER=v0.7.0
-RUN curl -L https://github.com/libbpf/libbpf/tarball/${LIBBPF_VER} | \
-    tar xz -C . --strip-components=1 && \
-    cp include/uapi/linux/if_xdp.h /usr/include/linux && \
-    cd src && \
-    make install && \
-    ldconfig
-
-WORKDIR /mellanox
-# RUN curl -L wget https://content.mellanox.com/ofed/MLNX_OFED-5.5-1.0.3.2/MLNX_OFED_LINUX-5.5-1.0.3.2-ubuntu20.04-x86_64.tgz | \
-RUN curl -L wget https://content.mellanox.com/ofed/MLNX_OFED-5.4-3.1.0.0/MLNX_OFED_LINUX-5.4-3.1.0.0-ubuntu20.04-x86_64.tgz | \
-    tar xz -C . --strip-components=2
-RUN ./mlnxofedinstall --with-mft --with-mstflint --auto-add-kernel-support --without-fw-update --dpdk --upstream-libs --force
-
-# RUN mkdir -p /opt/mellanox/doca
-# COPY mlx-doca/doca-host-repo-ubuntu2004_1.2.1-0.1.5.1.2.006.5.5.2.1.7.0_amd64.deb /opt/mellanox/doca
-
-# RUN apt-get update && \
-#     DEBIAN_FRONTEND=noninteractive apt-get install -y libvma
-
-# RUN dpkg -i /opt/mellanox/doca/doca-host-repo-ubuntu2004_1.2.1-0.1.5.1.2.006.5.5.2.1.7.0_amd64.deb
-# RUN apt-get update && \
-#     DEBIAN_FRONTEND=noninteractive apt-get install -y doca-sdk doca-runtime doca-tools
-
-RUN apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get -y install \
-        make apt-transport-https ca-certificates g++ make \
-        pkg-config libunwind8-dev liblzma-dev zlib1g-dev \
+        linux-tools-common linux-tools-generic linux-tools-`uname -r` \
+        python3-pyverbs pkg-config git make apt-transport-https \
+        g++ libunwind8-dev liblzma-dev zlib1g-dev \
         libpcap-dev libssl-dev libnuma-dev git \
         python3-scapy libgflags-dev libgoogle-glog-dev \
         libgraph-easy-perl libgtest-dev \
         libc-ares-dev libbenchmark-dev \
         libgtest-dev wget autoconf \
-        automake cmake curl libtool \
+        automake cmake libtool \
         make ninja-build patch python3-pip \
-        unzip virtualenv
+        unzip virtualenv zip tar meson \
+        libelf-dev libz-dev
+
+ARG MAKEFLAGS
+ENV PKG_CONFIG_PATH=/usr/lib64/pkgconfig
+
+## Mellanox OFED Driver
+ARG ENABLE_MLX
+COPY install_mlx_ofed.sh .
+RUN ./install_mlx_ofed.sh
 
 WORKDIR /grpc
 RUN git clone -b v1.44.0 https://github.com/grpc/grpc
@@ -88,17 +55,33 @@ RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get -y install \
         curl zip unzip tar meson
 
-# RUN git clone https://github.com/Microsoft/vcpkg.git
-# RUN cd /grpc/vcpkg && ./bootstrap-vcpkg.sh && \
-#     ./vcpkg integrate install && \
-#     ./vcpkg install grpc
-
-# RUN cd /grpc/vcpkg && \
-#     ./vcpkg install protobuf
-
 # The following packages are needed to run bessctl
 RUN pip3 install --user protobuf grpcio scapy
 
+# linux ver should match target machine's kernel
+WORKDIR /libbpf
+# ARG LIBBPF_VER=v0.3
+ARG LIBBPF_VER=v0.7.0
+RUN curl -L https://github.com/libbpf/libbpf/tarball/${LIBBPF_VER} | \
+    tar xz -C . --strip-components=1 && \
+    cd src && BUILD_STATIC_ONLY=y DESTDIR=/usr make install && \
+    ldconfig
+
+WORKDIR /bpftool
+COPY xdp-plugin xdp-scripts
+RUN ./xdp-scripts/install-dependencies.sh && \
+    rm -rf /bpftool
+
+RUN update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-12 100 && \
+    update-alternatives --install /usr/bin/clang clang /usr/bin/clang-12 100
+
+WORKDIR /libxdp
+ARG LIBXDP_VER=v1.2.2
+RUN git clone -b ${LIBXDP_VER} https://github.com/xdp-project/xdp-tools.git && \
+    cd xdp-tools && ./configure && make libxdp && \
+    sudo make libxdp install
+
+FROM bess-deps AS bess-build
 # BESS pre-reqs
 WORKDIR /bess
 ARG BESS_COMMIT=dpdk-2011-focal
@@ -134,16 +117,9 @@ RUN ./build_bess.sh && \
     mkdir -p /opt/bess && \
     cp -r bessctl pybess /opt/bess && \
     cp -r core/pb /pb 
-    # mkdir -p /bin/kmod &> /dev/null && \
-    # ./core/kmod/install && \
-    # ls core/kmod
-
-#RUN ./build.py kmod
-
-#RUN cp core/kmod/bess.ko /bin/bess.ko
 
 # Stage bess: creates the runtime image of BESS
-FROM ubuntu:latest AS bess
+FROM ubuntu:20.04 AS bess
 
 RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
@@ -153,8 +129,7 @@ RUN apt-get update && \
         iptables \
         iputils-ping \
         tcpdump python3-pip \
-        kmod python-is-python3 && \
-    rm -rf /var/lib/apt/lists/* && \
+        kmod python-is-python3 curl && \
     pip3 install --no-cache-dir \
         flask \
         grpcio \
@@ -163,28 +138,48 @@ RUN apt-get update && \
         protobuf \
         psutil \
         pyroute2 \
-        scapy && \
+        scapy 
+
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get -y install \
+        ca-certificates python3-pip software-properties-common \
+        libelf-dev sudo kmod python3-pyverbs curl python-is-python3 \
+        linux-tools-common linux-tools-generic linux-tools-`uname -r` \
+        python3-pyverbs pkg-config git make apt-transport-https \
+        g++ libunwind8-dev liblzma-dev zlib1g-dev \
+        libpcap-dev libssl-dev libnuma-dev git \
+        python3-scapy libgflags-dev libgoogle-glog-dev \
+        libgraph-easy-perl libgtest-dev \
+        libc-ares-dev libbenchmark-dev \
+        libgtest-dev wget autoconf \
+        automake cmake libtool \
+        make ninja-build patch python3-pip \
+        unzip virtualenv zip tar meson \
+        libelf-dev libz-dev
+
+## Mellanox OFED Driver
+ARG ENABLE_MLX
+COPY install_mlx_ofed.sh .
+RUN ./install_mlx_ofed.sh
+
+RUN rm -rf /var/lib/apt/lists/* && \
     apt-get --purge remove -y \
         gcc
 
-RUN mkdir -p /opt/mellanox/doca
-COPY mlx-doca/doca-host-repo-ubuntu2004_1.2.1-0.1.5.1.2.006.5.5.2.1.7.0_amd64.deb /opt/mellanox/doca
+# RUN mkdir -p /opt/mellanox/doca
+# COPY mlx-doca/doca-host-repo-ubuntu2004_1.2.1-0.1.5.1.2.006.5.5.2.1.7.0_amd64.deb /opt/mellanox/doca
 
-RUN apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y libvma
+# RUN apt-get update && \
+#     DEBIAN_FRONTEND=noninteractive apt-get install -y libvma
 
-RUN dpkg -i /opt/mellanox/doca/doca-host-repo-ubuntu2004_1.2.1-0.1.5.1.2.006.5.5.2.1.7.0_amd64.deb
-RUN apt-get update && \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y doca-sdk doca-runtime doca-tools
+# RUN dpkg -i /opt/mellanox/doca/doca-host-repo-ubuntu2004_1.2.1-0.1.5.1.2.006.5.5.2.1.7.0_amd64.deb
+# RUN apt-get update && \
+#     DEBIAN_FRONTEND=noninteractive apt-get install -y doca-sdk doca-runtime doca-tools
 
 COPY --from=bess-build /opt/bess /opt/bess
 COPY --from=bess-build /bin/bessd /bin/bessd
 COPY --from=bess-build /bin/modules /bin/modules
-#COPY --from=bess-build /bin/bess.ko /bin/bess.ko
 COPY conf /opt/bess/bessctl/conf
-# RUN rm -rf /bin/kmod
-# RUN mkdir -p /bin/kmod
-# RUN mv /bin/bess.ko /bin/kmod/bess.ko
 RUN ln -s /opt/bess/bessctl/bessctl /bin
 ENV PYTHONPATH="/opt/bess"
 WORKDIR /opt/bess/bessctl

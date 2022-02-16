@@ -53,7 +53,7 @@ kwargs = {'size_inc_q': 512,
           'size_out_q': 512,
           'num_inc_q': num_q,
           'num_out_q': num_q}
-p = PMDPort(port_id=0, **kwargs)
+p = PMDPort(port_id=1, **kwargs)
 
 #n3seq_kwargs = sim.gen_gtpu_sequpdate_args(flows, "16.0.0.1", n3seq_offset, 0x30000000)
 n9seq_kwargs = sim.gen_gtpu_sequpdate_args(flows, "16.0.0.1", n9seq_offset, 0x90000000)
