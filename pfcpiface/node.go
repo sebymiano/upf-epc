@@ -33,7 +33,7 @@ type PFCPNode struct {
 
 // NewPFCPNode create a new PFCPNode listening on local address.
 func NewPFCPNode(ctx context.Context, upf *upf) *PFCPNode {
-	conn, err := reuse.ListenPacket("udp", ":"+PFCPPort)
+	conn, err := reuse.ListenPacket("udp", "0.0.0.0:"+PFCPPort)
 	if err != nil {
 		log.Fatalln("ListenUDP failed", err)
 	}

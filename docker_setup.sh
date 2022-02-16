@@ -7,6 +7,7 @@ set -e
 gui_port=8000
 bessd_port=10514
 metrics_port=8080
+pfcp_port=8805
 
 # Driver options. Choose any one of the three
 #
@@ -22,7 +23,7 @@ mode="af_xdp"
 # Gateway interface(s)
 #
 # In the order of ("s1u" "sgi")
-ifaces=("ens1f0" "ens1f1")
+ifaces=("access" "core")
 
 # Static IP addresses of gateway interface(s) in cidr format
 #
@@ -112,7 +113,7 @@ make docker-build
 
 if [ "$mode" == 'dpdk' ]; then
 	# Devices for DUT machine
-	#DEVICES=${DEVICES:-'--device=/dev/vfio/88 --device=/dev/vfio/89 --device=/dev/vfio/vfio'}
+	DEVICES=${DEVICES:-'--device=/dev/vfio/88 --device=/dev/vfio/89 --device=/dev/vfio/vfio'}
 	#DEVICES=${DEVICES:-'--device=/dev/vfio/69 --device=/dev/vfio/70 --device=/dev/vfio/vfio'}
 	# Devices for pktgen machine
  	#DEVICES=${DEVICES:-'--device=/dev/vfio/113 --device=/dev/vfio/114 --device=/dev/vfio/vfio'}
@@ -130,6 +131,7 @@ fi
 docker run --name pause -td --restart unless-stopped \
 	-p $gui_port:$gui_port \
 	-p $metrics_port:$metrics_port \
+	-p 0.0.0.0:$pfcp_port:$pfcp_port/udp \
 	--hostname $(hostname) \
 	k8s.gcr.io/pause
 

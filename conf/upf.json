@@ -71,7 +71,7 @@
     },
 
     "": "Number of worker threads. Default: 1",
-    "workers": 2,
+    "workers": 4,
 
     "": "Parameters for handling outgoing requests",
     "max_req_retries": 5,

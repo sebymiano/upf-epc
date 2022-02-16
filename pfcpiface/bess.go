@@ -67,7 +67,7 @@ var intEnc = func(u uint64) *pb.FieldData {
 	return &pb.FieldData{Encoding: &pb.FieldData_ValueInt{ValueInt: u}}
 }
 
-var bessIP = flag.String("bess", "localhost:10514", "BESS IP/port combo")
+var bessIP = flag.String("bess", "0.0.0.0:10514", "BESS IP/port combo")
 
 type bess struct {
 	client           pb.BESSControlClient
