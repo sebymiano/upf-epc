@@ -1,0 +1,13 @@
+diff --git a/build.py b/build.py
+index 35c0741b..6979be6e 100755
+--- a/build.py
++++ b/build.py
+@@ -252,7 +252,7 @@ def download_dpdk(quiet=False):
+ 
+ def configure_dpdk():
+     print('Configuring DPDK...')
+-    meson_opts = '--buildtype=debugoptimized'
++    meson_opts = '--buildtype=debugoptimized -Ddisable_drivers=common/octeontx,common/octeontx2,crypto/*'
+ 
+     arch = os.getenv('CPU')
+     if arch:

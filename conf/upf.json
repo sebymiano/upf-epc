@@ -3,7 +3,7 @@
     "": "mode: af_xdp",
     "": "mode: af_packet",
     "": "mode: sim",
-    "mode": "dpdk",
+    "mode": "af_xdp",
 
     "table_sizes": {
         "": "Example sizes based on sim mode and 50K sessions. Customize as per your control plane",
@@ -135,7 +135,7 @@
 
     "": "Control plane controller settings",
     "cpiface": {
-        "peers": ["148.162.12.214"],
+        "peers": ["138.37.32.26"],
         "dnn": "internet",
         "http_port": "8080",
         "enable_ue_ip_alloc": false,

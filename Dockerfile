@@ -5,22 +5,19 @@
 # Multi-stage Dockerfile
 
 # Stage bess-deps: fetch BESS dependencies
-FROM ghcr.io/omec-project/upf-epc/bess_build AS bess-deps
-# BESS pre-reqs
-WORKDIR /bess
-ARG BESS_COMMIT=dpdk-2011-focal
-RUN curl -L https://github.com/NetSys/bess/tarball/${BESS_COMMIT} | \
-    tar xz -C . --strip-components=1
-COPY patches/bess patches
-RUN cat patches/* | patch -p1
-RUN cp -a protobuf /protobuf
+FROM ubuntu:latest AS bess-deps
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get -y install \
+        ca-certificates python3-pip software-properties-common \
+        libelf-dev sudo kmod python3-pyverbs curl python-is-python3 \
+        linux-tools-common linux-tools-generic linux-tools-`uname -r`
 
 # Stage bess-build: builds bess with its dependencies
 FROM bess-deps AS bess-build
 ARG CPU=native
 RUN apt-get update && \
-    apt-get -y install --no-install-recommends \
-        ca-certificates \
+    DEBIAN_FRONTEND=noninteractive apt-get -y install --no-install-recommends \
+        ca-certificates pkg-config git \
         libelf-dev sudo kmod python3-pyverbs \
         linux-tools-common linux-tools-generic linux-tools-`uname -r`
         
@@ -31,6 +28,7 @@ ENV PKG_CONFIG_PATH=/usr/lib64/pkgconfig
 # linux ver should match target machine's kernel
 WORKDIR /libbpf
 ARG LIBBPF_VER=v0.3
+# ARG LIBBPF_VER=v0.7.0
 RUN curl -L https://github.com/libbpf/libbpf/tarball/${LIBBPF_VER} | \
     tar xz -C . --strip-components=1 && \
     cp include/uapi/linux/if_xdp.h /usr/include/linux && \
@@ -39,11 +37,77 @@ RUN curl -L https://github.com/libbpf/libbpf/tarball/${LIBBPF_VER} | \
     ldconfig
 
 WORKDIR /mellanox
+# RUN curl -L wget https://content.mellanox.com/ofed/MLNX_OFED-5.5-1.0.3.2/MLNX_OFED_LINUX-5.5-1.0.3.2-ubuntu20.04-x86_64.tgz | \
 RUN curl -L wget https://content.mellanox.com/ofed/MLNX_OFED-5.4-3.1.0.0/MLNX_OFED_LINUX-5.4-3.1.0.0-ubuntu20.04-x86_64.tgz | \
     tar xz -C . --strip-components=2
-RUN ./mlnxofedinstall --with-mft --with-mstflint --dpdk --upstream-libs --force
+RUN ./mlnxofedinstall --with-mft --with-mstflint --auto-add-kernel-support --without-fw-update --dpdk --upstream-libs --force
 
+# RUN mkdir -p /opt/mellanox/doca
+# COPY mlx-doca/doca-host-repo-ubuntu2004_1.2.1-0.1.5.1.2.006.5.5.2.1.7.0_amd64.deb /opt/mellanox/doca
+
+# RUN apt-get update && \
+#     DEBIAN_FRONTEND=noninteractive apt-get install -y libvma
+
+# RUN dpkg -i /opt/mellanox/doca/doca-host-repo-ubuntu2004_1.2.1-0.1.5.1.2.006.5.5.2.1.7.0_amd64.deb
+# RUN apt-get update && \
+#     DEBIAN_FRONTEND=noninteractive apt-get install -y doca-sdk doca-runtime doca-tools
+
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get -y install \
+        make apt-transport-https ca-certificates g++ make \
+        pkg-config libunwind8-dev liblzma-dev zlib1g-dev \
+        libpcap-dev libssl-dev libnuma-dev git \
+        python3-scapy libgflags-dev libgoogle-glog-dev \
+        libgraph-easy-perl libgtest-dev \
+        libc-ares-dev libbenchmark-dev \
+        libgtest-dev wget autoconf \
+        automake cmake curl libtool \
+        make ninja-build patch python3-pip \
+        unzip virtualenv
+
+WORKDIR /grpc
+RUN git clone -b v1.44.0 https://github.com/grpc/grpc
+RUN cd /grpc/grpc && git submodule init && git submodule update --recursive 
+RUN cd /grpc/grpc && mkdir -p cmake/build && cd cmake/build && \
+    cmake ../.. -DgRPC_INSTALL=ON              \
+              -DCMAKE_BUILD_TYPE=Release       \
+              -DgRPC_ABSL_PROVIDER=module     \
+              -DgRPC_CARES_PROVIDER=module    \
+              -DgRPC_PROTOBUF_PROVIDER=module \
+              -DgRPC_RE2_PROVIDER=module      \
+              -DgRPC_SSL_PROVIDER=package      \
+              -DgRPC_ZLIB_PROVIDER=package &&  \
+    make -j$(getconf _NPROCESSORS_ONLN) && sudo make install
+
+RUN cd /grpc/grpc/third_party/protobuf && \
+    git submodule update --init --recursive && \
+    ./autogen.sh && ./configure && \
+    make -j$(getconf _NPROCESSORS_ONLN) && sudo make install && sudo ldconfig
+
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get -y install \
+        curl zip unzip tar meson
+
+# RUN git clone https://github.com/Microsoft/vcpkg.git
+# RUN cd /grpc/vcpkg && ./bootstrap-vcpkg.sh && \
+#     ./vcpkg integrate install && \
+#     ./vcpkg install grpc
+
+# RUN cd /grpc/vcpkg && \
+#     ./vcpkg install protobuf
+
+# The following packages are needed to run bessctl
+RUN pip3 install --user protobuf grpcio scapy
+
+# BESS pre-reqs
 WORKDIR /bess
+ARG BESS_COMMIT=dpdk-2011-focal
+RUN curl -L https://github.com/NetSys/bess/tarball/${BESS_COMMIT} | \
+    tar xz -C . --strip-components=1
+COPY patches/bess patches
+RUN cat patches/* | patch -p1
+RUN cp -a protobuf /protobuf
+
 # Patch BESS, patch and build DPDK
 COPY patches/dpdk/* deps/
 RUN ./build.py dpdk
@@ -79,18 +143,19 @@ RUN ./build_bess.sh && \
 #RUN cp core/kmod/bess.ko /bin/bess.ko
 
 # Stage bess: creates the runtime image of BESS
-FROM python:3.9.9-slim AS bess
+FROM ubuntu:latest AS bess
+
 RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
         gcc \
         libgraph-easy-perl \
         iproute2 \
         iptables \
         iputils-ping \
-        tcpdump \
-        kmod && \
+        tcpdump python3-pip \
+        kmod python-is-python3 && \
     rm -rf /var/lib/apt/lists/* && \
-    pip install --no-cache-dir \
+    pip3 install --no-cache-dir \
         flask \
         grpcio \
         iptools \
@@ -101,6 +166,17 @@ RUN apt-get update && \
         scapy && \
     apt-get --purge remove -y \
         gcc
+
+RUN mkdir -p /opt/mellanox/doca
+COPY mlx-doca/doca-host-repo-ubuntu2004_1.2.1-0.1.5.1.2.006.5.5.2.1.7.0_amd64.deb /opt/mellanox/doca
+
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y libvma
+
+RUN dpkg -i /opt/mellanox/doca/doca-host-repo-ubuntu2004_1.2.1-0.1.5.1.2.006.5.5.2.1.7.0_amd64.deb
+RUN apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y doca-sdk doca-runtime doca-tools
+
 COPY --from=bess-build /opt/bess /opt/bess
 COPY --from=bess-build /bin/bessd /bin/bessd
 COPY --from=bess-build /bin/modules /bin/modules
@@ -126,7 +202,7 @@ RUN mkdir /bess_pb && \
         --go_opt=paths=source_relative --go_out=plugins=grpc:/bess_pb
 
 FROM bess-deps AS py-pb
-RUN pip install grpcio-tools==1.26
+RUN pip3 install grpcio-tools==1.26
 RUN mkdir /bess_pb && \
     python -m grpc_tools.protoc -I /usr/include -I /protobuf/ \
         /protobuf/*.proto /protobuf/ports/*.proto \
