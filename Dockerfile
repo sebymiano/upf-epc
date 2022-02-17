@@ -72,8 +72,8 @@ COPY xdp-plugin xdp-scripts
 RUN ./xdp-scripts/install-dependencies.sh && \
     rm -rf /bpftool
 
-RUN update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-12 100 && \
-    update-alternatives --install /usr/bin/clang clang /usr/bin/clang-12 100
+# RUN update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-12 100 && \
+#     update-alternatives --install /usr/bin/clang clang /usr/bin/clang-12 100
 
 WORKDIR /libxdp
 ARG LIBXDP_VER=v1.2.2

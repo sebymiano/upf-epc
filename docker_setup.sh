@@ -15,7 +15,7 @@ pfcp_port=8805
 # "af_xdp" uses AF_XDP sockets via DPDK's vdev for pkt I/O. This version is non-zc version. ZC version still needs to be evaluated.
 # "af_packet" uses AF_PACKET sockets via DPDK's vdev for pkt I/O.
 # "sim" uses Source() modules to simulate traffic generation
-mode="af_xdp"
+mode="dpdk"
 #mode="af_xdp"
 #mode="af_packet"
 # mode="sim"
@@ -33,7 +33,7 @@ ipaddrs=(198.18.0.1/30 198.19.0.1/30)
 # MAC addresses of gateway interface(s)
 #
 # In the order of (s1u sgi)
-macaddrs=(b4:96:91:46:65:bc b4:96:91:46:65:be)
+macaddrs=(f8:f2:1e:b2:43:00 f8:f2:1e:b2:43:01)
 
 # Static IP addresses of the neighbors of gateway interface(s)
 #
@@ -43,7 +43,7 @@ nhipaddrs=(198.18.0.2 198.19.0.2)
 # Static MAC addresses of the neighbors of gateway interface(s)
 #
 # In the order of (n-s1u n-sgi)
-nhmacaddrs=(b4:96:91:31:96:4c b4:96:91:31:96:4e)
+nhmacaddrs=(f8:f2:1e:b2:65:70 f8:f2:1e:b2:65:71)
 
 # IPv4 route table entries in cidr format per port
 #
@@ -158,7 +158,7 @@ fi
 
 # Run bessd
 docker run --name bess -td --restart unless-stopped \
-	--cpuset-cpus=0,2,4,6,8,10,12,14 \
+	--cpuset-cpus=1,3,5,7,9,11,13,15,17,19 \
 	--ulimit memlock=-1 -v /dev/hugepages:/dev/hugepages \
 	-v "$PWD/conf":/opt/bess/bessctl/conf \
 	-v /lib/firmware:/lib/firmware \
