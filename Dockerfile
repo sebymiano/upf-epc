@@ -64,7 +64,8 @@ WORKDIR /libbpf
 ARG LIBBPF_VER=v0.7.0
 RUN curl -L https://github.com/libbpf/libbpf/tarball/${LIBBPF_VER} | \
     tar xz -C . --strip-components=1 && \
-    cd src && BUILD_STATIC_ONLY=y DESTDIR=/usr make install && \
+    cd src && PREFIX=/usr LIBDIR=/usr/lib UAPIDIR=/usr/include make install && \
+    PREFIX=/usr LIBDIR=/usr/lib UAPIDIR=/usr/include make install_uapi_headers && \
     ldconfig
 
 WORKDIR /bpftool
@@ -76,8 +77,8 @@ RUN ./xdp-scripts/install-dependencies.sh && \
 #     update-alternatives --install /usr/bin/clang clang /usr/bin/clang-12 100
 
 WORKDIR /libxdp
-ARG LIBXDP_VER=v1.2.2
-RUN git clone -b ${LIBXDP_VER} https://github.com/xdp-project/xdp-tools.git && \
+ARG LIBXDP_VER=master
+RUN git clone -b libxdp-cpp https://github.com/sebymiano/xdp-tools.git && \
     cd xdp-tools && ./configure && make libxdp && \
     sudo make libxdp install
 

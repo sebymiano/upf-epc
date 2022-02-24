@@ -76,6 +76,7 @@ type bess struct {
 	notifyBessSocket net.Conn
 	endMarkerChan    chan []byte
 	qciQosMap        map[uint8]*QosConfigVal
+	eBPFFastPath     bool
 }
 
 func (b *bess) isConnected(accessIP *net.IP) bool {
@@ -628,6 +629,8 @@ func (b *bess) setUpfInfo(u *upf, conf *Conf) {
 
 	b.client = pb.NewBESSControlClient(b.conn)
 
+	b.eBPFFastPath = conf.EnableBPFFastPath
+
 	if conf.EnableNotifyBess {
 		notifySockAddr := conf.NotifySockAddr
 		if notifySockAddr == "" {
@@ -761,6 +764,51 @@ func (b *bess) addPDR(ctx context.Context, done chan<- bool, p pdr) {
 
 			b.processPDR(ctx, any, upfMsgTypeAdd)
 		}
+
+		if b.eBPFFastPath {
+			log.Tracef("[eBPF Fast Path] PDR rules %+v", portRules)
+			for _, r := range portRules {
+				f := &pb.UPFeBPFCommandAddPDRArg{
+					Priority: int64(math.MaxUint32 - p.precedence),
+					Keys: &pb.KeysData{
+						SrcIface:      uint64(p.srcIface),        /* src_iface-mask */
+						TunnelIP4Dst:  p.tunnelIP4Dst,            /* tunnel_ipv4_dst-mask */
+						TunnelTEID:    p.tunnelTEID,              /* enb_teid-mask */
+						UeIPsrcAddr:   p.appFilter.srcIP,         /* ueaddr ip-mask */
+						InetIPdstAddr: p.appFilter.dstIP,         /* inet ip-mask */
+						UeSrcPort:     uint32(r.srcPort),         /* ue port-mask */
+						InetSrcPort:   uint32(r.dstPort),         /* inet port-mask */
+						ProtoID:       uint32(p.appFilter.proto), /* proto id-mask */
+					},
+					Masks: &pb.KeysData{
+						SrcIface:      uint64(p.srcIfaceMask),        /* src_iface-mask */
+						TunnelIP4Dst:  p.tunnelIP4DstMask,            /* tunnel_ipv4_dst-mask */
+						TunnelTEID:    p.tunnelTEIDMask,              /* enb_teid-mask */
+						UeIPsrcAddr:   p.appFilter.srcIPMask,         /* ueaddr ip-mask */
+						InetIPdstAddr: p.appFilter.dstIPMask,         /* inet ip-mask */
+						UeSrcPort:     uint32(r.srcMask),             /* ue port-mask */
+						InetSrcPort:   uint32(r.dstMask),             /* inet port-mask */
+						ProtoID:       uint32(p.appFilter.protoMask), /* proto id-mask */
+					},
+					Values: &pb.ValuesData{
+						PdrID: uint64(p.pdrID), /* pdr-id */
+						FseID: uint32(p.fseID), /* fseid */
+						CtrID: p.ctrID,         /* ctr_id */
+						QerID: qerID,           /* qer_id */
+						FarID: p.farID,         /* far_id */
+					},
+				}
+
+				any, err = anypb.New(f)
+				if err != nil {
+					log.Println("[eBPF PDR] Error marshalling the rule", f, err)
+					return
+				}
+
+				b.processPDR(ctx, any, upfMsgTypeAdd)
+			}
+		}
+
 		done <- true
 	}()
 }

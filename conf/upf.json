@@ -20,7 +20,7 @@
     },
 
     "": "Set the log level to one of \"panic\", \"fatal\", \"error\", \"warning\", \"info\", \"debug\", \"trace\"",
-    "log_level": "info",
+    "log_level": "trace",
 
     "": "Use the sim block to enable simulation using either Source module or via il_trafficgen",
     "sim": {
@@ -71,7 +71,7 @@
     },
 
     "": "Number of worker threads. Default: 1",
-    "workers": 4,
+    "workers": 8,
 
     "": "Parameters for handling outgoing requests",
     "max_req_retries": 5,
@@ -92,6 +92,9 @@
     "" : "read_timeout: 25",
     "" : "notify_sockaddr: /tmp/notifycp",
     "" : "endmarker_sockaddr: /tmp/pfcpport",
+
+    "": "Whether to enable eBPF/XDP Fast Path",
+    "enable_ebpf_fp": true,
 
     "": "Whether to enable UPF HeartBeatTimer feature",
     "enable_hbTimer": false,
