@@ -89,8 +89,10 @@ ARG BESS_COMMIT=dpdk-2011-focal
 RUN curl -L https://github.com/NetSys/bess/tarball/${BESS_COMMIT} | \
     tar xz -C . --strip-components=1
 COPY patches/bess patches
+COPY patches/bess-upf-ebpf patches
 RUN cat patches/* | patch -p1
 RUN cp -a protobuf /protobuf
+RUN cp -a upf-ebpf/protobuf/upf_ebpf_msg.proto /protobuf
 
 # Patch BESS, patch and build DPDK
 COPY patches/dpdk/* deps/
@@ -101,6 +103,8 @@ RUN mkdir -p plugins
 
 ## SequentialUpdate
 RUN mv sample_plugin plugins
+
+COPY upf-ebpf /bess/plugins
 
 ## Network Token
 ARG ENABLE_NTF

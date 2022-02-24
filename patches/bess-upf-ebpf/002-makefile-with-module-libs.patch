@@ -1,5 +1,5 @@
 diff --git a/core/Makefile b/core/Makefile
-index 65741791..6c033073 100644
+index 65741791..5a157702 100644
 --- a/core/Makefile
 +++ b/core/Makefile
 @@ -63,7 +63,7 @@ HAS_PKG_CONFIG := $(shell command -v $(PKG_CONFIG) 2>&1 >/dev/null && echo yes |
@@ -11,21 +11,29 @@ index 65741791..6c033073 100644
  # These libraries are not supported by pkg-config.
  ALWAYS_LIBS := -lpcap -lgflags -lnuma
  # If pkg-config is available, we just need a list of the dependecies.
-@@ -73,7 +73,8 @@ NO_PKG_CONFIG_LIBS := -lglog -lgflags -lprotobuf -lgrpc++ -lunwind -lz
+@@ -73,7 +73,7 @@ NO_PKG_CONFIG_LIBS := -lglog -lgflags -lprotobuf -lgrpc++ -lunwind -lz
  # If pkg-config is not available and we're static linking, we also need
  # the indirect dependecies.  This is annoying, because they may change
  # in future versions.
 -NO_PKG_CONFIG_LIBS_INDIRECT := -lgrpc -lssl -lcrypto -llzma
 +NO_PKG_CONFIG_LIBS_INDIRECT := -lgrpc -llzma
-+# REMOVE_LIBS := -lssl
  
  ifeq ($(HAS_PKG_CONFIG), yes)
    PKG_CFLAGS := $(shell $(PKG_CONFIG) --cflags $(PKG_CONFIG_DEPS))
-@@ -137,6 +138,7 @@ else # Used static libraries
-     # we want to dynamically link no matter what.  Filter those out
-     # to avoid including them into the static linking section.
-     PKG_LIBS := $(filter-out $(ALWAYS_DYN_LIBS), $(PKG_LIBS))
-+    # PKG_LIBS := $(filter-out $(REMOVE_LIBS), $(PKG_LIBS))
-   else
-     PKG_LIBS := $(NO_PKG_CONFIG_LIBS) $(NO_PKG_CONFIG_LIBS_INDIRECT)
-   endif
+@@ -165,6 +165,7 @@ endif
+ # Unless we explicitly specify a default goal, the first target in the
+ # included .mk file below will become the default goal by surprise.
+ .DEFAULT_GOAL := all
++MODULE_LDFLAGS :=
+ 
+ -include extra*.mk
+ 
+@@ -410,7 +411,7 @@ $(eval $(call BUILD, \
+         MODULE_LD, \
+         %.so, \
+         %.o, \
+-        $(CXX) -shared -o $$@ $$^ $(LDFLAGS)))
++        $(CXX) -shared -o $$@ $$^ $(LDFLAGS) $(MODULE_LDFLAGS)))
+ 
+ $(eval $(call BUILD, \
+         MODULE_TEST_LD, \

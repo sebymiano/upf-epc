@@ -15,15 +15,15 @@ pfcp_port=8805
 # "af_xdp" uses AF_XDP sockets via DPDK's vdev for pkt I/O. This version is non-zc version. ZC version still needs to be evaluated.
 # "af_packet" uses AF_PACKET sockets via DPDK's vdev for pkt I/O.
 # "sim" uses Source() modules to simulate traffic generation
-mode="dpdk"
-#mode="af_xdp"
+# mode="dpdk"
+mode="af_xdp"
 #mode="af_packet"
 # mode="sim"
 
 # Gateway interface(s)
 #
 # In the order of ("s1u" "sgi")
-ifaces=("access" "core")
+ifaces=("ens4f0" "ens4f1")
 
 # Static IP addresses of gateway interface(s) in cidr format
 #
