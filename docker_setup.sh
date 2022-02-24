@@ -95,9 +95,9 @@ function move_ifaces() {
 		if [ "$mode" == 'af_xdp' ]; then
 			sudo ip netns exec pause ethtool --features "${ifaces[$i]}" ntuple off
 			sudo ip netns exec pause ethtool --features "${ifaces[$i]}" ntuple on
-			sudo ip netns exec pause ethtool -N "${ifaces[$i]}" flow-type udp4 action 0
-			sudo ip netns exec pause ethtool -N "${ifaces[$i]}" flow-type tcp4 action 0
-			sudo ip netns exec pause ethtool -u "${ifaces[$i]}"
+			# sudo ip netns exec pause ethtool -N "${ifaces[$i]}" flow-type udp4 action 0
+			# sudo ip netns exec pause ethtool -N "${ifaces[$i]}" flow-type tcp4 action 0
+			# sudo ip netns exec pause ethtool -u "${ifaces[$i]}"
 		fi
 	done
 	setup_addrs
