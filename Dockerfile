@@ -200,6 +200,7 @@ COPY --from=bess-build /opt/bess /opt/bess
 COPY --from=bess-build /bin/bessd /bin/bessd
 COPY --from=bess-build /bin/modules /bin/modules
 COPY conf /opt/bess/bessctl/conf
+COPY upf-ebpf/bessctl_conf/upf-ebpf.bess /opt/bess/bessctl/conf/upf-ebpf.bess
 RUN ln -s /opt/bess/bessctl/bessctl /bin
 ENV PYTHONPATH="/opt/bess"
 WORKDIR /opt/bess/bessctl
