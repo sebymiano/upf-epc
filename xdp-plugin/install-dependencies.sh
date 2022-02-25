@@ -49,7 +49,7 @@ function install_linux_bpftool {
 
 $SUDO apt update
 PACKAGES=""
-PACKAGES+=" build-essential cmake linux-headers-$(uname -r) libelf-dev zlibc libssl-dev libbfd-dev libpcap-dev libcap-dev"
+PACKAGES+=" build-essential cmake libelf-dev zlibc libssl-dev libbfd-dev libpcap-dev libcap-dev"
 PACKAGES+=" clang-12 clang-tools-12 clang-format-12 clang llvm llvm-12 llvm-12-dev llvm-12-tools llvm-12-runtime g++-multilib"
 PACKAGES+=" pkg-config net-tools bash tcpreplay gnupg gnupg2 gpgv2 curl flex bison bc" # utility libraries
 

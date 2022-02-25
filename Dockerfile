@@ -11,7 +11,7 @@ RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get -y install \
         ca-certificates python3-pip software-properties-common \
         libelf-dev sudo kmod python3-pyverbs curl python-is-python3 \
-        linux-tools-common linux-tools-generic linux-tools-`uname -r` \
+        linux-tools-common linux-tools-generic \
         python3-pyverbs pkg-config git make apt-transport-https \
         g++ libunwind8-dev liblzma-dev zlib1g-dev \
         libpcap-dev libssl-dev libnuma-dev git \
@@ -150,7 +150,7 @@ RUN apt-get update && \
     DEBIAN_FRONTEND=noninteractive apt-get -y install \
         ca-certificates python3-pip software-properties-common \
         libelf-dev sudo kmod python3-pyverbs curl python-is-python3 \
-        linux-tools-common linux-tools-generic linux-tools-`uname -r` \
+        linux-tools-common linux-tools-generic \
         python3-pyverbs pkg-config git make apt-transport-https \
         g++ libunwind8-dev liblzma-dev zlib1g-dev \
         libpcap-dev libssl-dev libnuma-dev git \
@@ -168,19 +168,33 @@ ARG ENABLE_MLX
 COPY install_mlx_ofed.sh .
 RUN ./install_mlx_ofed.sh
 
+# linux ver should match target machine's kernel
+WORKDIR /libbpf
+# ARG LIBBPF_VER=v0.3
+ARG LIBBPF_VER=v0.7.0
+RUN curl -L https://github.com/libbpf/libbpf/tarball/${LIBBPF_VER} | \
+    tar xz -C . --strip-components=1 && \
+    cd src && PREFIX=/usr LIBDIR=/usr/lib UAPIDIR=/usr/include make install && \
+    PREFIX=/usr LIBDIR=/usr/lib UAPIDIR=/usr/include make install_uapi_headers && \
+    ldconfig
+
+WORKDIR /bpftool
+COPY xdp-plugin xdp-scripts
+RUN ./xdp-scripts/install-dependencies.sh && \
+    rm -rf /bpftool
+
+# RUN update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-12 100 && \
+#     update-alternatives --install /usr/bin/clang clang /usr/bin/clang-12 100
+
+WORKDIR /libxdp
+ARG LIBXDP_VER=master
+RUN git clone -b libxdp-cpp https://github.com/sebymiano/xdp-tools.git && \
+    cd xdp-tools && ./configure && make libxdp && \
+    sudo make libxdp install && sudo ldconfig
+
 RUN rm -rf /var/lib/apt/lists/* && \
     apt-get --purge remove -y \
         gcc
-
-# RUN mkdir -p /opt/mellanox/doca
-# COPY mlx-doca/doca-host-repo-ubuntu2004_1.2.1-0.1.5.1.2.006.5.5.2.1.7.0_amd64.deb /opt/mellanox/doca
-
-# RUN apt-get update && \
-#     DEBIAN_FRONTEND=noninteractive apt-get install -y libvma
-
-# RUN dpkg -i /opt/mellanox/doca/doca-host-repo-ubuntu2004_1.2.1-0.1.5.1.2.006.5.5.2.1.7.0_amd64.deb
-# RUN apt-get update && \
-#     DEBIAN_FRONTEND=noninteractive apt-get install -y doca-sdk doca-runtime doca-tools
 
 COPY --from=bess-build /opt/bess /opt/bess
 COPY --from=bess-build /bin/bessd /bin/bessd
