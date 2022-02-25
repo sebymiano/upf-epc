@@ -700,6 +700,27 @@ func (b *bess) processPDR(ctx context.Context, any *anypb.Any, method upfMsgType
 	}
 }
 
+func (b *bess) processUPFeBPFPDR(ctx context.Context, any *anypb.Any, method upfMsgType) {
+	if method != upfMsgTypeAdd && method != upfMsgTypeDel && method != upfMsgTypeClear {
+		log.Println("Invalid method name: ", method)
+		return
+	}
+
+	methods := [...]string{"add_pdr", "add", "delete_pdr", "clear"}
+
+	resp, err := b.client.ModuleCommand(ctx, &pb.CommandRequest{
+		Name: "upfeBPF",
+		Cmd:  methods[method],
+		Arg:  any,
+	})
+
+	log.Traceln("upfeBPF resp : ", resp)
+
+	if err != nil || resp.GetError() != nil {
+		log.Errorf("upfeBPF method failed with resp: %v, err: %v\n", resp, err)
+	}
+}
+
 func (b *bess) addPDR(ctx context.Context, done chan<- bool, p pdr) {
 	go func() {
 		var (
@@ -770,7 +791,7 @@ func (b *bess) addPDR(ctx context.Context, done chan<- bool, p pdr) {
 			for _, r := range portRules {
 				f := &pb.UPFeBPFCommandAddPDRArg{
 					Priority: int64(math.MaxUint32 - p.precedence),
-					Keys: &pb.KeysData{
+					Keys: &pb.PDRKeysData{
 						SrcIface:      uint64(p.srcIface),        /* src_iface-mask */
 						TunnelIP4Dst:  p.tunnelIP4Dst,            /* tunnel_ipv4_dst-mask */
 						TunnelTEID:    p.tunnelTEID,              /* enb_teid-mask */
@@ -780,7 +801,7 @@ func (b *bess) addPDR(ctx context.Context, done chan<- bool, p pdr) {
 						InetSrcPort:   uint32(r.dstPort),         /* inet port-mask */
 						ProtoID:       uint32(p.appFilter.proto), /* proto id-mask */
 					},
-					Masks: &pb.KeysData{
+					Masks: &pb.PDRKeysData{
 						SrcIface:      uint64(p.srcIfaceMask),        /* src_iface-mask */
 						TunnelIP4Dst:  p.tunnelIP4DstMask,            /* tunnel_ipv4_dst-mask */
 						TunnelTEID:    p.tunnelTEIDMask,              /* enb_teid-mask */
@@ -790,7 +811,7 @@ func (b *bess) addPDR(ctx context.Context, done chan<- bool, p pdr) {
 						InetSrcPort:   uint32(r.dstMask),             /* inet port-mask */
 						ProtoID:       uint32(p.appFilter.protoMask), /* proto id-mask */
 					},
-					Values: &pb.ValuesData{
+					Values: &pb.PDRValuesData{
 						PdrID: uint64(p.pdrID), /* pdr-id */
 						FseID: uint32(p.fseID), /* fseid */
 						CtrID: p.ctrID,         /* ctr_id */
@@ -805,7 +826,7 @@ func (b *bess) addPDR(ctx context.Context, done chan<- bool, p pdr) {
 					return
 				}
 
-				b.processPDR(ctx, any, upfMsgTypeAdd)
+				b.processUPFeBPFPDR(ctx, any, upfMsgTypeAdd)
 			}
 		}
 

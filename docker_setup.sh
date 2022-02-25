@@ -162,6 +162,7 @@ docker run --name bess -td --restart unless-stopped \
 	--ulimit memlock=-1 -v /dev/hugepages:/dev/hugepages \
 	-v "$PWD/conf":/opt/bess/bessctl/conf \
 	-v /lib/firmware:/lib/firmware \
+	-v /sys/fs/bpf:/sys/fs/bpf \
 	--net container:pause \
 	$PRIVS \
 	$DEVICES \
