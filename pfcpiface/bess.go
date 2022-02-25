@@ -880,6 +880,42 @@ func (b *bess) delPDR(ctx context.Context, done chan<- bool, p pdr) {
 
 			b.processPDR(ctx, any, upfMsgTypeDel)
 		}
+
+		if b.eBPFFastPath {
+			log.Tracef("[eBPF Fast Path] PDR rules %+v", portRules)
+			for _, r := range portRules {
+				f := &pb.UPFeBPFCommandDeletePDRArg{
+					Keys: &pb.PDRKeysData{
+						SrcIface:      uint64(p.srcIface),        /* src_iface-mask */
+						TunnelIP4Dst:  p.tunnelIP4Dst,            /* tunnel_ipv4_dst-mask */
+						TunnelTEID:    p.tunnelTEID,              /* enb_teid-mask */
+						UeIPsrcAddr:   p.appFilter.srcIP,         /* ueaddr ip-mask */
+						InetIPdstAddr: p.appFilter.dstIP,         /* inet ip-mask */
+						UeSrcPort:     uint32(r.srcPort),         /* ue port-mask */
+						InetSrcPort:   uint32(r.dstPort),         /* inet port-mask */
+						ProtoID:       uint32(p.appFilter.proto), /* proto id-mask */
+					},
+					Masks: &pb.PDRKeysData{
+						SrcIface:      uint64(p.srcIfaceMask),        /* src_iface-mask */
+						TunnelIP4Dst:  p.tunnelIP4DstMask,            /* tunnel_ipv4_dst-mask */
+						TunnelTEID:    p.tunnelTEIDMask,              /* enb_teid-mask */
+						UeIPsrcAddr:   p.appFilter.srcIPMask,         /* ueaddr ip-mask */
+						InetIPdstAddr: p.appFilter.dstIPMask,         /* inet ip-mask */
+						UeSrcPort:     uint32(r.srcMask),             /* ue port-mask */
+						InetSrcPort:   uint32(r.dstMask),             /* inet port-mask */
+						ProtoID:       uint32(p.appFilter.protoMask), /* proto id-mask */
+					},
+				}
+
+				any, err = anypb.New(f)
+				if err != nil {
+					log.Println("[eBPF PDR] Error marshalling the rule", f, err)
+					return
+				}
+
+				b.processUPFeBPFPDR(ctx, any, upfMsgTypeDel)
+			}
+		}
 		done <- true
 	}()
 }
@@ -1076,6 +1112,27 @@ func (b *bess) processFAR(ctx context.Context, any *anypb.Any, method upfMsgType
 	}
 }
 
+func (b *bess) processFAReBPFPDR(ctx context.Context, any *anypb.Any, method upfMsgType) {
+	if method != upfMsgTypeAdd && method != upfMsgTypeDel && method != upfMsgTypeClear {
+		log.Println("Invalid method name: ", method)
+		return
+	}
+
+	methods := [...]string{"add_far", "add", "delete_far", "clear"}
+
+	resp, err := b.client.ModuleCommand(ctx, &pb.CommandRequest{
+		Name: "upfeBPF",
+		Cmd:  methods[method],
+		Arg:  any,
+	})
+
+	log.Traceln("upfeBPF FAR resp : ", resp)
+
+	if err != nil || resp.GetError() != nil {
+		log.Errorf("upfeBPF FAR method failed with resp: %v, err: %v\n", resp, err)
+	}
+}
+
 func (b *bess) setActionValue(f far) uint8 {
 	if (f.applyAction & ActionForward) != 0 {
 		if f.dstIntf == ie.DstInterfaceAccess {
@@ -1126,6 +1183,33 @@ func (b *bess) addFAR(ctx context.Context, done chan<- bool, far far) {
 		}
 
 		b.processFAR(ctx, any, upfMsgTypeAdd)
+
+		if b.eBPFFastPath {
+			log.Tracef("[eBPF Fast Path] FAR rule")
+			f := &pb.UPFeBPFCommandAddFARArg{
+				Keys: &pb.FARKeysData{
+					FarID: uint32(far.farID), /* far_id */
+					FseID: uint32(far.fseID), /* fseid */
+				},
+				Values: &pb.FARValuesData{
+					Action:       uint64(action),           /* action */
+					TunnelType:   uint64(far.tunnelType),   /* tunnel_out_type */
+					TunnelIP4Src: uint32(far.tunnelIP4Src), /* access-ip */
+					TunnelIP4Dst: uint32(far.tunnelIP4Dst), /* enb ip */
+					TunnelTEID:   uint32(far.tunnelTEID),   /* enb teid */
+					TunnelPort:   uint32(far.tunnelPort),   /* udp gtpu port */
+				},
+			}
+
+			any, err = anypb.New(f)
+			if err != nil {
+				log.Println("Error marshalling the rule", f, err)
+				return
+			}
+
+			b.processFAReBPFPDR(ctx, any, upfMsgTypeAdd)
+		}
+
 		done <- true
 	}()
 }
@@ -1151,6 +1235,24 @@ func (b *bess) delFAR(ctx context.Context, done chan<- bool, far far) {
 		}
 
 		b.processFAR(ctx, any, upfMsgTypeDel)
+
+		if b.eBPFFastPath {
+			log.Tracef("[eBPF Fast Path] FAR rule")
+			f := &pb.UPFeBPFCommandDeleteFARArg{
+				Keys: &pb.FARKeysData{
+					FarID: uint32(far.farID), /* far_id */
+					FseID: uint32(far.fseID), /* fseid */
+				},
+			}
+
+			any, err = anypb.New(f)
+			if err != nil {
+				log.Println("Error marshalling the rule", f, err)
+				return
+			}
+
+			b.processFAReBPFPDR(ctx, any, upfMsgTypeDel)
+		}
 		done <- true
 	}()
 }
