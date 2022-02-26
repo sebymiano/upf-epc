@@ -20,7 +20,7 @@
     },
 
     "": "Set the log level to one of \"panic\", \"fatal\", \"error\", \"warning\", \"info\", \"debug\", \"trace\"",
-    "log_level": "trace",
+    "log_level": "error",
 
     "": "Use the sim block to enable simulation using either Source module or via il_trafficgen",
     "sim": {
