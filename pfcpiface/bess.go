@@ -1034,6 +1034,40 @@ func (b *bess) addApplicationQER(ctx context.Context, gate uint64, srcIface uint
 	if err != nil {
 		log.Errorln("process QER failed for appQERLookup add operation")
 	}
+
+	if b.eBPFFastPath {
+		log.Tracef("[eBPF Fast Path] Application QER rule")
+		q := &pb.UPFeBPFCommandAddAppQoSArg{
+			QosVal: &pb.QoSValues{
+				Cir: cir, /* committed info rate */
+				Pir: pir, /* peak info rate */
+				Cbs: cbs, /* committed burst size */
+				Pbs: pbs, /* Peak burst size */
+				Ebs: ebs, /* Excess burst size */
+			},
+			Keys: &pb.AppQoSKeysData{
+				SrcIface: uint64(srcIface),  /* Src Intf */
+				QerID:    uint32(qer.qerID), /* qer_id */
+				FseID:    uint32(qer.fseID), /* fseid */
+			},
+			Values: &pb.AppQoSValuesData{
+				QfiID: uint32(qer.qfi), /* QFI */
+			},
+		}
+
+		any, err = anypb.New(q)
+		if err != nil {
+			log.Errorln("Error marshalling the rule", q, err)
+			return
+		}
+
+		qosTableName := AppQerLookup
+
+		err = b.processQEReBPF(ctx, any, upfMsgTypeAdd, qosTableName)
+		if err != nil {
+			log.Errorln("process QER failed for appQERLookup add operation")
+		}
+	}
 }
 
 func (b *bess) delQER(ctx context.Context, done chan<- bool, qer qer) {
@@ -1088,6 +1122,30 @@ func (b *bess) delApplicationQER(
 	err = b.processQER(ctx, any, upfMsgTypeDel, qosTableName)
 	if err != nil {
 		log.Errorln("process QER failed for appQERLookup del operation")
+	}
+
+	if b.eBPFFastPath {
+		log.Tracef("[eBPF Fast Path] Application QER rule")
+		q := &pb.UPFeBPFCommandDelAppQoSArg{
+			Keys: &pb.AppQoSKeysData{
+				SrcIface: uint64(srcIface),  /* Src Intf */
+				QerID:    uint32(qer.qerID), /* qer_id */
+				FseID:    uint32(qer.fseID), /* fseid */
+			},
+		}
+
+		any, err = anypb.New(q)
+		if err != nil {
+			log.Errorln("Error marshalling the rule", q, err)
+			return
+		}
+
+		qosTableName := AppQerLookup
+
+		err = b.processQEReBPF(ctx, any, upfMsgTypeDel, qosTableName)
+		if err != nil {
+			log.Errorln("process QER failed for appQERLookup del operation")
+		}
 	}
 }
 
@@ -1399,6 +1457,37 @@ func (b *bess) processQER(ctx context.Context, any *anypb.Any, method upfMsgType
 	return nil
 }
 
+func (b *bess) processQEReBPF(ctx context.Context, any *anypb.Any, method upfMsgType, qosTableName string) error {
+	if method != upfMsgTypeAdd && method != upfMsgTypeDel && method != upfMsgTypeClear {
+		return ErrInvalidArgument("method name", method)
+	}
+
+	var methods []string
+
+	if qosTableName == AppQerLookup {
+		methods = append(methods, []string{"add_app_qos", "add", "delete_app_qos", "clear"}...)
+	} else if qosTableName == SessQerLookup {
+		methods = append(methods, []string{"add_session_qos", "add", "delete_session_qos", "clear"}...)
+	} else {
+		return nil
+	}
+
+	resp, err := b.client.ModuleCommand(ctx, &pb.CommandRequest{
+		Name: "upfeBPF",
+		Cmd:  methods[method],
+		Arg:  any,
+	})
+
+	log.Traceln("upfeBPF qerlookup resp : ", resp)
+
+	if err != nil || resp.GetError() != nil {
+		log.Errorf("upfeBPF %v for qer %v failed with resp: %v, error: %v", qosTableName, methods[method], resp, err)
+		return err
+	}
+
+	return nil
+}
+
 func (b *bess) addSessionQER(ctx context.Context, gate uint64, srcIface uint8,
 	cir uint64, pir uint64, cbs uint64,
 	pbs uint64, ebs uint64, qer qer) {
@@ -1432,6 +1521,35 @@ func (b *bess) addSessionQER(ctx context.Context, gate uint64, srcIface uint8,
 	if err != nil {
 		log.Errorln("process QER failed for sessionQERLookup add operation")
 	}
+
+	if b.eBPFFastPath {
+		q := &pb.UPFeBPFCommandAddSessionQoSArg{
+			QosVal: &pb.QoSValues{
+				Cir: cir, /* committed info rate */
+				Pir: pir, /* peak info rate */
+				Cbs: cbs, /* committed burst size */
+				Pbs: pbs, /* Peak burst size */
+				Ebs: ebs, /* Excess burst size */
+			},
+			Keys: &pb.SessionQoSKeysData{
+				SrcIface: uint64(srcIface),  /* Src Intf */
+				FseID:    uint32(qer.fseID), /* fseid */
+			},
+		}
+
+		any, err = anypb.New(q)
+		if err != nil {
+			log.Errorln("Error marshalling the rule", q, err)
+			return
+		}
+
+		qosTableName := SessQerLookup
+
+		err = b.processQEReBPF(ctx, any, upfMsgTypeAdd, qosTableName)
+		if err != nil {
+			log.Errorln("process QER failed for sessionQERLookup add operation")
+		}
+	}
 }
 
 func (b *bess) delSessionQER(ctx context.Context, srcIface uint8, qer qer) {
@@ -1458,6 +1576,28 @@ func (b *bess) delSessionQER(ctx context.Context, srcIface uint8, qer qer) {
 	err = b.processQER(ctx, any, upfMsgTypeDel, qosTableName)
 	if err != nil {
 		log.Errorln("process QER failed for sessionQERLookup del operation")
+	}
+
+	if b.eBPFFastPath {
+		q := &pb.UPFeBPFCommandDelSessionQoSArg{
+			Keys: &pb.SessionQoSKeysData{
+				SrcIface: uint64(srcIface),  /* Src Intf */
+				FseID:    uint32(qer.fseID), /* fseid */
+			},
+		}
+
+		any, err = anypb.New(q)
+		if err != nil {
+			log.Println("Error marshalling the rule", q, err)
+			return
+		}
+
+		qosTableName := SessQerLookup
+
+		err = b.processQEReBPF(ctx, any, upfMsgTypeDel, qosTableName)
+		if err != nil {
+			log.Errorln("process QER failed for sessionQERLookup del operation")
+		}
 	}
 }
 
