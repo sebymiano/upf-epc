@@ -22,7 +22,7 @@ RUN apt-get update && \
         automake cmake libtool \
         make ninja-build patch python3-pip \
         unzip virtualenv zip tar meson \
-        libelf-dev libz-dev
+        libelf-dev libz-dev libnl-3-dev
 
 ARG MAKEFLAGS
 ENV PKG_CONFIG_PATH=/usr/lib64/pkgconfig
@@ -161,7 +161,7 @@ RUN apt-get update && \
         automake cmake libtool \
         make ninja-build patch python3-pip \
         unzip virtualenv zip tar meson \
-        libelf-dev libz-dev
+        libelf-dev libz-dev libnl-3-dev
 
 ## Mellanox OFED Driver
 ARG ENABLE_MLX
