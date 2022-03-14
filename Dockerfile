@@ -210,14 +210,14 @@ ENTRYPOINT ["bessd", "-f"]
 FROM golang AS protoc-gen
 RUN go get github.com/golang/protobuf/protoc-gen-go
 
-FROM bess-deps AS go-pb
+FROM bess-build AS go-pb
 COPY --from=protoc-gen /go/bin/protoc-gen-go /bin
 RUN mkdir /bess_pb && \
     protoc -I /usr/include -I /protobuf/ \
         /protobuf/*.proto /protobuf/ports/*.proto \
         --go_opt=paths=source_relative --go_out=plugins=grpc:/bess_pb
 
-FROM bess-deps AS py-pb
+FROM bess-build AS py-pb
 RUN pip3 install grpcio-tools==1.26
 RUN mkdir /bess_pb && \
     python -m grpc_tools.protoc -I /usr/include -I /protobuf/ \
@@ -245,12 +245,12 @@ ENTRYPOINT [ "/bin/pfcpiface" ]
 
 # Stage pb: dummy stage for collecting protobufs
 FROM scratch AS pb
-COPY --from=bess-deps /bess/protobuf /protobuf
+COPY --from=bess-build /bess/protobuf /protobuf
 COPY --from=go-pb /bess_pb /bess_pb
 
 # Stage ptf-pb: dummy stage for collecting python protobufs
 FROM scratch AS ptf-pb
-COPY --from=bess-deps /bess/protobuf /protobuf
+COPY --from=bess-build /bess/protobuf /protobuf
 COPY --from=py-pb /bess_pb /bess_pb
 
 # Stage binaries: dummy stage for collecting artifacts

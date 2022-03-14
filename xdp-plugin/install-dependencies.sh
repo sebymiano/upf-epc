@@ -12,7 +12,7 @@ BPFTOOL_VERSION=5.13
 function install_linux_bpftool {
   echo -e "${COLOR_GREEN} Installing Linux bpftool v${BPFTOOL_VERSION} ${COLOR_OFF}"
 
-  # Let's first check if perf is available
+  # Let's first check if bpftool is available
   local bpftool_check1=$(command -v bpftool &> /dev/null; echo $?)
   local bpftool_check2=$($SUDO bpftool --help &> /dev/null; echo $?)
 
@@ -27,22 +27,33 @@ function install_linux_bpftool {
 
   # If we reach this point, we need to install perf manually
   # Let's start by downloading the kernel
-  chmod +x ${KERNEL_DOWNLOAD_SCRIPT}
-  ${KERNEL_DOWNLOAD_SCRIPT} ${BPFTOOL_VERSION}
+  # chmod +x ${KERNEL_DOWNLOAD_SCRIPT}
+  # ${KERNEL_DOWNLOAD_SCRIPT} ${BPFTOOL_VERSION}
 
-  if [ $? -ne 0 ]; then
-    echo -e "${COLOR_RED} Unable to install Linux bpftool v${BPFTOOL_VERSION} ${COLOR_OFF}"
-    echo -e "${COLOR_RED} You can try to install it manually${COLOR_OFF}"
-    return
-  fi
+  # if [ $? -ne 0 ]; then
+  #   echo -e "${COLOR_RED} Unable to install Linux bpftool v${BPFTOOL_VERSION} ${COLOR_OFF}"
+  #   echo -e "${COLOR_RED} You can try to install it manually${COLOR_OFF}"
+  #   return
+  # fi
 
   pushd .
-  cd $DIR/deps/linux/tools/bpf/bpftool
+  mkdir -p "${DIR}/deps"
+  cd "${DIR}/deps"
+  git clone --recurse-submodules https://github.com/libbpf/bpftool.git
+  cd bpftool/src
   make -j "$(getconf _NPROCESSORS_ONLN)"
   $SUDO make install
+  $SUDO cp ./bpftool /usr/bin/bpftool
   popd
 
   echo -e "${COLOR_GREEN} Linux bpftool installed. ${COLOR_OFF}"
+
+  bpftool_check1=$(command -v bpftool &> /dev/null; echo $?)
+  bpftool_check2=$($SUDO bpftool --help &> /dev/null; echo $?)
+  if [ $bpftool_check1 -ne 0 ] || [ $bpftool_check2 -ne 0 ]; then
+    echo "bpftool not found"
+    exit 1
+  fi
 }
 
 [ -z ${SUDO+x} ] && SUDO='sudo'
