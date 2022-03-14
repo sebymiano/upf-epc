@@ -10,4 +10,4 @@ sudo docker run --name pktgen -td --restart unless-stopped --cpuset-cpus=3,5,7,9
 
 sleep 20
 sudo docker exec -d -it pktgen ./bessctl http 0.0.0.0 8000
-sudo docker exec -it -d pktgen ./bessctl run pktgen
+sudo docker exec -it -d pktgen ./bessctl run custom_pktgen
