@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2020 Intel Corporation
 
-package main
+package pfcpiface
 
 import (
 	"context"
@@ -11,6 +11,8 @@ import (
 	"net"
 	"strconv"
 	"time"
+
+	"google.golang.org/grpc/connectivity"
 
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -80,7 +82,7 @@ type bess struct {
 }
 
 func (b *bess) isConnected(accessIP *net.IP) bool {
-	if (b.conn == nil) || (int(b.conn.GetState()) != Ready) {
+	if (b.conn == nil) || (b.conn.GetState() != connectivity.Ready) {
 		return false
 	}
 

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2020 Intel Corporation
 
-package main
+package pfcpiface
 
 import (
 	"errors"
@@ -21,7 +21,7 @@ type HandlePFCPMsgError struct {
 }
 
 func (e *HandlePFCPMsgError) Error() string {
-	return "Error during " + e.Op + e.Err.Error()
+	return "Error during " + e.Op + ": " + e.Err.Error()
 }
 
 func errUnmarshal(err error) *HandlePFCPMsgError {

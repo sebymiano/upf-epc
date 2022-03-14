@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright 2021-present Open Networking Foundation
 
-package main
+package pfcpiface
 
 import (
 	"context"
@@ -9,6 +9,8 @@ import (
 	"io/ioutil"
 	"os"
 	"time"
+
+	"google.golang.org/grpc/connectivity"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -99,9 +101,25 @@ func convertError(err error) error {
 	return p4RtError
 }
 
+// TimeBasedElectionId Generates an election id that is monotonically increasing with time.
+// Specifically, the upper 64 bits are the unix timestamp in seconds, and the
+// lower 64 bits are the remaining nanoseconds. This is compatible with
+// election-systems that use the same epoch-based election IDs, and in that
+// case, this election ID will be guaranteed to be higher than any previous
+// election ID. This is useful in tests where repeated connections need to
+// acquire mastership reliably.
+func TimeBasedElectionId() p4.Uint128 {
+	now := time.Now()
+
+	return p4.Uint128{
+		High: uint64(now.Unix()),
+		Low:  uint64(now.UnixNano() % 1e9),
+	}
+}
+
 // CheckStatus ... Check client connection status.
-func (c *P4rtClient) CheckStatus() (state int) {
-	return int(c.conn.GetState())
+func (c *P4rtClient) CheckStatus() connectivity.State {
+	return c.conn.GetState()
 }
 
 // SetMastership .. API.
@@ -283,13 +301,44 @@ func (c *P4rtClient) ClearTable(tableID uint32) error {
 	updates := make([]*p4.Update, len(readRes.GetEntities()))
 
 	for _, entity := range readRes.GetEntities() {
-		updateType := p4.Update_DELETE
 		update := &p4.Update{
-			Type:   updateType,
+			Type:   p4.Update_DELETE,
 			Entity: entity,
 		}
 
 		updates = append(updates, update)
+	}
+
+	return c.WriteBatchReq(updates)
+}
+
+func (c *P4rtClient) ClearTables(tableIDs []uint32) error {
+	log.WithFields(log.Fields{
+		"table IDs": tableIDs,
+	}).Traceln("Clearing P4 tables")
+
+	updates := []*p4.Update{}
+
+	for _, tableID := range tableIDs {
+		entry := &p4.TableEntry{
+			TableId:  tableID,
+			Priority: DefaultPriority,
+		}
+
+		readRes, err := c.ReadTableEntry(entry)
+		if err != nil {
+			return err
+		}
+
+		for _, entity := range readRes.GetEntities() {
+			updateType := p4.Update_DELETE
+			update := &p4.Update{
+				Type:   updateType,
+				Entity: entity,
+			}
+
+			updates = append(updates, update)
+		}
 	}
 
 	return c.WriteBatchReq(updates)
@@ -331,6 +380,24 @@ func (c *P4rtClient) ApplyTableEntries(methodType p4.Update_Type, entries ...*p4
 			},
 		}
 		log.Traceln("Writing table entry: ", proto.MarshalTextString(update))
+
+		updates = append(updates, update)
+	}
+
+	return c.WriteBatchReq(updates)
+}
+
+func (c *P4rtClient) ApplyMeterEntries(methodType p4.Update_Type, entries ...*p4.MeterEntry) error {
+	var updates []*p4.Update
+
+	for _, entry := range entries {
+		update := &p4.Update{
+			Type: methodType,
+			Entity: &p4.Entity{
+				Entity: &p4.Entity_MeterEntry{MeterEntry: entry},
+			},
+		}
+		log.Traceln("Writing table entry: ", proto.MarshalTextString(update))
 		updates = append(updates, update)
 	}
 
@@ -368,15 +435,28 @@ func (c *P4rtClient) WriteBatchReq(updates []*p4.Update) error {
 
 // GetForwardingPipelineConfig ... Get Pipeline config from switch.
 func (c *P4rtClient) GetForwardingPipelineConfig() (err error) {
-	log.Println("GetForwardingPipelineConfig")
+	getLog := log.WithFields(log.Fields{
+		"device ID": c.deviceID,
+		"conn":      c.conn.Target(),
+	})
+	getLog.Info("Getting ForwardingPipelineConfig from P4Rt device")
 
 	pipeline, err := GetPipelineConfig(c.client, c.deviceID)
 	if err != nil {
-		log.Println("set pipeline config error ", err)
+		getLog.Println("set pipeline config error ", err)
 		return
 	}
 
+	// P4 spec allows for sending successful response to GetForwardingPipelineConfig
+	// without config. We fail in such a case, because the response without config is useless.
+	if pipeline.GetConfig() == nil {
+		return ErrOperationFailedWithReason("GetForwardingPipelineConfig",
+			"Operation successful, but no P4 config provided.")
+	}
+
 	c.P4Info = *pipeline.Config.P4Info
+
+	getLog.Info("Got ForwardingPipelineConfig from P4Rt device")
 
 	return
 }
@@ -515,7 +595,7 @@ func CreateChannel(host string, deviceID uint64) (*P4rtClient, error) {
 		return nil, err
 	}
 
-	err = client.SetMastership(p4.Uint128{High: 1, Low: 1})
+	err = client.SetMastership(TimeBasedElectionId())
 	if err != nil {
 		log.Println("Set Mastership error: ", err)
 		return nil, err
