@@ -7,7 +7,7 @@ set -e
 gui_port=8000
 bessd_port=10514
 metrics_port=8080
-
+pfcp_port=8805
 # Driver options. Choose any one of the three
 #
 # "dpdk" set as default
@@ -155,7 +155,7 @@ fi
 
 # Run bessd
 docker run --name bess -td --restart unless-stopped \
-	--cpuset-cpus=3,5,7,9 \
+	--cpuset-cpus=3,5,7,9,11,13,15,17 \
 	--ulimit memlock=-1 -v /dev/hugepages:/dev/hugepages \
 	-v "$PWD/conf":/opt/bess/bessctl/conf \
 	--net container:pause \
@@ -178,7 +178,7 @@ docker run --name bess-web -d --restart unless-stopped \
 
 # Run bess-pfcpiface depending on mode type
 docker run --name bess-pfcpiface -td --restart on-failure \
-	--net container:pause \
+	-p 0.0.0.0:$pfcp_port:$pfcp_port/udp \
 	-v "$PWD/conf/upf.json":/conf/upf.json \
 	upf-epc-pfcpiface:"$(<VERSION)" \
 	-config /conf/upf.json
