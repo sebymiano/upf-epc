@@ -132,6 +132,7 @@ docker run --name pause -td --restart unless-stopped \
 	-p $gui_port:$gui_port \
 	-p $metrics_port:$metrics_port \
 	-p 0.0.0.0:$pfcp_port:$pfcp_port/udp \
+	-p 0.0.0.0:$bessd_port:$bessd_port \
 	--hostname $(hostname) \
 	k8s.gcr.io/pause
 
