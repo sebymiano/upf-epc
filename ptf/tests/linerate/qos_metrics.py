@@ -17,13 +17,13 @@ from trex_stl_lib.api import (
 )
 import ptf.testutils as testutils
 
-UPF_DEST_MAC = "0c:c4:7a:19:6d:ca"
+UPF_DEST_MAC = "f8:f2:1e:b2:43:00"
 
 # Port setup
 TREX_SENDER_PORT = 0
 TREX_RECEIVER_PORT = 1
-BESS_SENDER_PORT = 2
-BESS_RECEIVER_PORT = 3
+BESS_SENDER_PORT = 0
+BESS_RECEIVER_PORT = 1
 
 # Test specs
 DURATION = 10
