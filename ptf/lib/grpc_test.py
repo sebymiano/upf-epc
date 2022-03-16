@@ -6,6 +6,7 @@ from functools import wraps
 from pprint import pprint
 
 import grpc
+from matplotlib.pyplot import flag
 import ptf.testutils as testutils
 from google.protobuf import text_format
 from google.protobuf.any_pb2 import Any
@@ -89,6 +90,7 @@ class GrpcTest(BaseTest):
             clear=clear,
             latency_percentiles=quantiles,
             jitter_percentiles=quantiles,
+            flag_to_read=2
         )
         any = Any()
         any.Pack(request)

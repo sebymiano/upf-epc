@@ -19,10 +19,10 @@ from trex_utils import *
 # TODO: move to global constant file (or env)
 #  since it depends on Trex config and server where BESS is running
 # Port setup
-BESS_CORE_MAC = "0c:c4:7a:19:6d:ca"
-BESS_ACCESS_MAC = "0c:c4:7a:19:6d:cb"
-BESS_CORE_PORT = 2
-BESS_ACCESS_PORT = 3
+BESS_CORE_MAC = "f8:f2:1e:b2:43:01"
+BESS_ACCESS_MAC = "f8:f2:1e:b2:43:00"
+BESS_CORE_PORT = 1
+BESS_ACCESS_PORT = 0
 
 # test specs
 DURATION = 3
@@ -183,7 +183,7 @@ class AppMbrTest(TrexTest, GrpcTest):
             min_tx_bps=stream_bps * 0.95)
 
         trex_stats = self.trex_client.get_stats()
-        return get_flow_stats(0, trex_stats)
+        return get_flow_stats(BESS_CORE_PORT, trex_stats)
 
 
 class DlAppMbrConformingTest(AppMbrTest):
