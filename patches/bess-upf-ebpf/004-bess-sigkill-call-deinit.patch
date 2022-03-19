@@ -1,5 +1,5 @@
 diff --git a/core/main.cc b/core/main.cc
-index 365a4a16..e80efcf5 100644
+index 365a4a16..53592adf 100644
 --- a/core/main.cc
 +++ b/core/main.cc
 @@ -31,6 +31,7 @@
@@ -27,12 +27,13 @@ index 365a4a16..e80efcf5 100644
  
  int main(int argc, char *argv[]) {
    FLAGS_logbuflevel = -1;
-@@ -87,6 +98,9 @@ int main(int argc, char *argv[]) {
+@@ -87,6 +98,10 @@ int main(int argc, char *argv[]) {
  
    PortBuilder::InitDrivers();
  
 +  signal(SIGINT, sig_handler);
 +  signal(SIGTERM, sig_handler);
++  signal(SIGKILL, sig_handler);
 +
    {
      ApiServer server;
