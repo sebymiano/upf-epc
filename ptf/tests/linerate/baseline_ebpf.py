@@ -175,7 +175,7 @@ class UplinkPerformanceBaselineTest(TrexTest, GrpceBPFTest):
     TRex traffic generator.
     """
 
-    # @autocleanup
+    @autocleanup
     def runTest(self):
         n3TEID = 0
 
