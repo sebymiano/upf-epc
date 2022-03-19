@@ -20,7 +20,8 @@ from trex_stl_lib.api import (
 )
 import ptf.testutils as testutils
 
-UPF_DEST_MAC = "f8:f2:1e:b2:43:00"
+ACCESS_DEST_MAC = "f8:f2:1e:b2:43:00"
+CORE_DEST_MAC = "f8:f2:1e:b2:43:01"
 
 # Port setup
 TREX_SENDER_PORT = 0
@@ -116,7 +117,7 @@ class DownlinkPerformanceBaselineTest(TrexTest, GrpceBPFTest):
 
         pkt = testutils.simple_udp_packet(
             pktlen=PKT_SIZE,
-            eth_dst=UPF_DEST_MAC,
+            eth_dst=CORE_DEST_MAC,
             with_udp_chksum=False,
         )
         stream = STLStream(
@@ -228,7 +229,7 @@ class UplinkPerformanceBaselineTest(TrexTest, GrpceBPFTest):
 
         pkt = testutils.simple_udp_packet(
             pktlen=PKT_SIZE,
-            eth_dst=UPF_DEST_MAC,
+            eth_dst=ACCESS_DEST_MAC,
             ip_dst=str(PDN_IP),
             with_udp_chksum=False,
         )
