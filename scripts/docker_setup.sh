@@ -15,8 +15,9 @@ pfcp_port=8805
 # "af_xdp" uses AF_XDP sockets via DPDK's vdev for pkt I/O. This version is non-zc version. ZC version still needs to be evaluated.
 # "af_packet" uses AF_PACKET sockets via DPDK's vdev for pkt I/O.
 # "sim" uses Source() modules to simulate traffic generation
+# "af_xdp" uses a combination of AF_XDP mode and eBPF/XDP fast-path
 # mode="dpdk"
-mode="af_xdp"
+mode="af_xdp_ebpf"
 #mode="af_packet"
 # mode="sim"
 
@@ -92,7 +93,7 @@ function move_ifaces() {
 		sudo ip link set "${ifaces[$i]}" netns pause up
 		sudo ip netns exec pause ip link set "${ifaces[$i]}" promisc off
 		sudo ip netns exec pause ip link set "${ifaces[$i]}" xdp off
-		if [ "$mode" == 'af_xdp' ]; then
+		if [ "$mode" == 'af_xdp' ] || [ "$mode" == 'af_xdp_ebpf' ]; then
 			sudo ip netns exec pause ethtool --features "${ifaces[$i]}" ntuple off
 			sudo ip netns exec pause ethtool --features "${ifaces[$i]}" ntuple on
 			# sudo ip netns exec pause ethtool -N "${ifaces[$i]}" flow-type udp4 action 0
@@ -119,10 +120,10 @@ if [ "$mode" == 'dpdk' ]; then
  	#DEVICES=${DEVICES:-'--device=/dev/vfio/113 --device=/dev/vfio/114 --device=/dev/vfio/vfio'}
 	#DEVICES=${DEVICES:-'--device=ens1f0 --device=ens1f1'}
 	PRIVS='--privileged'
-
 elif [ "$mode" == 'af_xdp' ]; then
 	PRIVS='--privileged'
-
+elif [ "$mode" == "af_xdp_ebpf"]; then
+	PRIVS='--privileged'
 elif [ "$mode" == 'af_packet' ]; then
 	PRIVS='--cap-add IPC_LOCK'
 fi
@@ -143,7 +144,7 @@ sudo ln -s "$sandbox" /var/run/netns/pause
 
 case $mode in
 "dpdk" | "sim") setup_mirror_links ;;
-"af_xdp" | "af_packet")
+"af_xdp" | "af_packet" | "af_xdp_ebpf")
 	move_ifaces
 	# Make sure that kernel does not send back icmp dest unreachable msg(s)
 	sudo ip netns exec pause iptables -I OUTPUT -p icmp --icmp-type port-unreachable -j DROP
@@ -175,6 +176,11 @@ docker logs bess
 sleep 30
 docker exec bess ./bessctl run up4
 sleep 10
+
+# Setup eBPF fast path pipeline
+if [ "$mode" != 'sim' ]; then
+	docker exec bess ./bessctl run upf-ebpf
+fi
 
 # Run bess-web
 docker run --name bess-web -d --restart unless-stopped \
