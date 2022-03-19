@@ -117,7 +117,9 @@ class Port:
         print(f"Setting NIC rx queue size for iface:{iface_name} to {number_rx_queue}")
         cmd = 'sudo -S ethtool -L {} combined {}'.format(iface_name, int(number_rx_queue))
         print("Running ethtool... {}".format(cmd))
-        print(os.popen(cmd).read())
+        ret = os.popen(cmd).read()
+        if ret:
+            print(ret)
         print(f"Setting NIC rx queue size for iface: {iface_name} DONE")
 
     def init_port(self, idx, conf_mode):

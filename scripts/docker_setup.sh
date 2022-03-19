@@ -122,7 +122,7 @@ if [ "$mode" == 'dpdk' ]; then
 	PRIVS='--privileged'
 elif [ "$mode" == 'af_xdp' ]; then
 	PRIVS='--privileged'
-elif [ "$mode" == "af_xdp_ebpf"]; then
+elif [ "$mode" == "af_xdp_ebpf" ]; then
 	PRIVS='--privileged'
 elif [ "$mode" == 'af_packet' ]; then
 	PRIVS='--cap-add IPC_LOCK'
