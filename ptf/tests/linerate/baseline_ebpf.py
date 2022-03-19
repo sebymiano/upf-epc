@@ -48,6 +48,9 @@ class DownlinkPerformanceBaselineTest(TrexTest, GrpceBPFTest):
     @autocleanup
     def runTest(self):
         n3TEID = 0
+        mbr_bps = 40000 * M # 40Gbps
+        mbr_kbps = mbr_bps / K
+        burst_ms = 10
 
         startIP = IPv4Address('16.0.0.1')
         endIP = startIP + UE_COUNT - 1
@@ -68,7 +71,7 @@ class DownlinkPerformanceBaselineTest(TrexTest, GrpceBPFTest):
                 fseID = n3TEID + i + 1, # start from 1
                 ctrID = 0,
                 farID = i,
-                qerIDList = [N6, 1],
+                qerIDList = [1],
                 needDecap = 0,
             )
             self.addPDR(pdrDown)
@@ -89,15 +92,12 @@ class DownlinkPerformanceBaselineTest(TrexTest, GrpceBPFTest):
 
             # install N6 DL/UL application QER
             qer = self.createQER(
-                gate = GATE_UNMETER,
-                qerID = N6,
-                fseID = n3TEID + i + 1, # start from 1
-                qfi = 9,
-                ulGbr = 0,
-                ulMbr = 0,
-                dlGbr = 0,
-                dlMbr = 0,
-                burstDurationMs = 10,
+                gate=GATE_METER,
+                qerID=1,
+                fseID=n3TEID + i + 1,
+                ulMbr=mbr_kbps,
+                dlMbr=mbr_kbps,
+                burstDurationMs=burst_ms,
             )
             self.addApplicationQER(qer)
 
