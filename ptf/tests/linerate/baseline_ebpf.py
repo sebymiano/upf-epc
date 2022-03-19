@@ -122,7 +122,7 @@ class DownlinkPerformanceBaselineTest(TrexTest, GrpceBPFTest):
         stream = STLStream(
             packet=STLPktBuilder(pkt=pkt, vm=vm),
             mode=STLTXCont(pps=RATE),
-            flow_stats=STLFlowLatencyStats(pg_id=0),
+            flow_stats=STLFlowLatencyStats(pg_id=BESS_ACCESS_PORT),
         )
         self.trex_client.add_streams(stream, ports=[BESS_CORE_PORT])
 
@@ -135,35 +135,22 @@ class DownlinkPerformanceBaselineTest(TrexTest, GrpceBPFTest):
         )
 
         self.trex_client.wait_on_traffic(ports=[BESS_CORE_PORT])
-        print(f"Duration was {time.time() - s_time}")
+        duration = time.time() - s_time
+        print(f"Duration was {duration}")
 
         trex_stats = self.trex_client.get_stats()
         print(trex_stats)
         lat_stats = get_latency_stats(BESS_ACCESS_PORT, trex_stats)
         flow_stats = get_flow_stats(BESS_ACCESS_PORT, trex_stats)
 
-        # Verify test results met baseline performance expectations
+        tx_packets_rate = (flow_stats.tx_packets/duration)/1000000
+        rx_packets_rate = (flow_stats.rx_packets/duration)/1000000
+        
+        print(f"Sent packets at rate: {tx_packets_rate:.2f} Mpps")
+        print(f"Received packets at rate: {rx_packets_rate:.2f} Mpps")
 
-        # 0% packet loss
-        self.assertEqual(
-            flow_stats.tx_packets,
-            flow_stats.rx_packets,
-            f"Didn't receive all packets; sent {flow_stats.tx_packets}, received {flow_stats.rx_packets}",
-        ) 
-
-        # 99.9th %ile latency < 1000 us
-        self.assertLessEqual(
-            lat_stats.percentile_99_9,
-            1000,
-            f"99.9th %ile latency was higher than 1000 us! Was {lat_stats.percentile_99_9} us",
-        )
-
-        # jitter < 20 us
-        self.assertLessEqual(
-            lat_stats.jitter,
-            20,
-            f"Jitter was higher than 20 us! Was {lat_stats.jitter}",
-        )
+        print(f"99.9th %ile latency is {lat_stats.percentile_99_9} us")
+        print(f"Jitter is {lat_stats.jitter} us")
 
         return
 
@@ -255,7 +242,7 @@ class UplinkPerformanceBaselineTest(TrexTest, GrpceBPFTest):
         stream = STLStream(
             packet=STLPktBuilder(pkt=gtpu_pkt, vm=vm),
             mode=STLTXCont(percentage=100),
-            flow_stats=STLFlowLatencyStats(pg_id=0),
+            flow_stats=STLFlowLatencyStats(pg_id=BESS_CORE_PORT),
         )
         self.trex_client.add_streams(stream, ports=[BESS_ACCESS_PORT])
         self.trex_client.clear_stats()
@@ -269,35 +256,22 @@ class UplinkPerformanceBaselineTest(TrexTest, GrpceBPFTest):
         )
 
         self.trex_client.wait_on_traffic(ports=[BESS_ACCESS_PORT])
-        print(f"Duration was {time.time() - s_time}")
+        duration = time.time() - s_time
+        print(f"Duration was {duration}")
 
         trex_stats = self.trex_client.get_stats()
         print(trex_stats)
         lat_stats = get_latency_stats(BESS_CORE_PORT, trex_stats)
         flow_stats = get_flow_stats(BESS_CORE_PORT, trex_stats)
 
-        # Verify test results met baseline performance expectations
+        tx_packets_rate = (flow_stats.tx_packets/duration)/1000000
+        rx_packets_rate = (flow_stats.rx_packets/duration)/1000000
 
-        # 0% packet loss
-        self.assertEqual(
-            flow_stats.tx_packets,
-            flow_stats.rx_packets,
-            f"Didn't receive all packets; sent {flow_stats.tx_packets}, received {flow_stats.rx_packets}",
-        ) 
+        print(f"Sent packets at rate: {tx_packets_rate:.2f} Mpps")
+        print(f"Received packets at rate: {rx_packets_rate:.2f} Mpps")
 
-        # 99.9th %ile latency < 1000 us
-        self.assertLessEqual(
-            lat_stats.percentile_99_9,
-            1000,
-            f"99.9th %ile latency was higher than 1000 us! Was {lat_stats.percentile_99_9} us",
-        )
-
-        # jitter < 20 us
-        self.assertLessEqual(
-            lat_stats.jitter,
-            20,
-            f"Jitter was higher than 20 us! Was {lat_stats.jitter}",
-        )
+        print(f"99.9th %ile latency is {lat_stats.percentile_99_9} us")
+        print(f"Jitter is {lat_stats.jitter} us")
 
         return
 
