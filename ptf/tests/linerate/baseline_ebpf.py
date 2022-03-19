@@ -121,16 +121,17 @@ class DownlinkPerformanceBaselineTest(TrexTest, GrpceBPFTest):
         )
         stream = STLStream(
             packet=STLPktBuilder(pkt=pkt, vm=vm),
-            mode=STLTXCont(pps=RATE),
+            mode=STLTXCont(percentage=100),
             flow_stats=STLFlowLatencyStats(pg_id=BESS_ACCESS_PORT),
         )
         self.trex_client.add_streams(stream, ports=[BESS_CORE_PORT])
+        self.trex_client.clear_stats()
+        self.trex_client.set_port_attr(ports=[BESS_ACCESS_PORT], promiscuous=True)
 
         print("Running traffic...")
         s_time = time.time()
         self.trex_client.start(
             ports=[BESS_CORE_PORT],
-            mult="1",
             duration=DURATION,
         )
 
