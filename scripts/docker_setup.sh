@@ -3,6 +3,9 @@
 # Copyright 2019 Intel Corporation
 
 set -e
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
 # TCP port of bess/web monitor
 gui_port=8000
 bessd_port=10514
@@ -17,9 +20,11 @@ pfcp_port=8805
 # "sim" uses Source() modules to simulate traffic generation
 # "af_xdp" uses a combination of AF_XDP mode and eBPF/XDP fast-path
 # mode="dpdk"
-mode="af_xdp_ebpf"
+# mode="af_xdp_ebpf"
 #mode="af_packet"
 # mode="sim"
+mode="af_xdp_ebpf"
+ebpf_cores=1
 
 # Gateway interface(s)
 #
@@ -93,15 +98,25 @@ function move_ifaces() {
 		sudo ip link set "${ifaces[$i]}" netns pause up
 		sudo ip netns exec pause ip link set "${ifaces[$i]}" promisc off
 		sudo ip netns exec pause ip link set "${ifaces[$i]}" xdp off
-		if [ "$mode" == 'af_xdp' ] || [ "$mode" == 'af_xdp_ebpf' ]; then
+		if [ "$mode" == 'af_xdp' ]; then
 			sudo ip netns exec pause ethtool --features "${ifaces[$i]}" ntuple off
 			sudo ip netns exec pause ethtool --features "${ifaces[$i]}" ntuple on
 			# sudo ip netns exec pause ethtool -N "${ifaces[$i]}" flow-type udp4 action 0
 			# sudo ip netns exec pause ethtool -N "${ifaces[$i]}" flow-type tcp4 action 0
 			# sudo ip netns exec pause ethtool -u "${ifaces[$i]}"
+		elif [ "$mode" == 'af_xdp_ebpf' ]; then
+			sudo ip netns exec pause ethtool -L "${ifaces[$i]}" combined ${ebpf_cores}
 		fi
 	done
 	setup_addrs
+}
+
+function set_irq_affinity() {
+	for ((i = 0; i < num_ifaces; i++)); do
+		if [ "$mode" == 'af_xdp_ebpf' ]; then
+			sudo ip netns exec pause ${DIR}/set_irq_affinity.sh local "${ifaces[$i]}"
+		fi
+	done
 }
 
 # Stop previous instances of bess* before restarting
@@ -174,13 +189,17 @@ docker logs bess
 
 # Sleep for a couple of secs before setting up the pipeline
 sleep 30
-docker exec bess ./bessctl run up4
-sleep 10
-
 # Setup eBPF fast path pipeline
-if [ "$mode" != 'sim' ]; then
+if [ "$mode" == 'af_xdp_ebpf' ]; then
+	# Setup eBPF fast path pipeline
 	docker exec bess ./bessctl run upf-ebpf
+	# sleep 10
+	# set_irq_affinity
+else
+	docker exec bess ./bessctl run up4
 fi
+# docker exec bess ./bessctl run up4
+sleep 10
 
 # Run bess-web
 docker run --name bess-web -d --restart unless-stopped \
