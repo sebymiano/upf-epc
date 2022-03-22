@@ -193,8 +193,8 @@ sleep 30
 if [ "$mode" == 'af_xdp_ebpf' ]; then
 	# Setup eBPF fast path pipeline
 	docker exec bess ./bessctl run upf-ebpf
-	# sleep 10
-	# set_irq_affinity
+	sleep 10
+	set_irq_affinity
 else
 	docker exec bess ./bessctl run up4
 fi
