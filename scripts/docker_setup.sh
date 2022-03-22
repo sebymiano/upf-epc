@@ -24,7 +24,7 @@ pfcp_port=8805
 #mode="af_packet"
 # mode="sim"
 mode="af_xdp_ebpf"
-ebpf_cores=1
+ebpf_cores=2
 
 # Gateway interface(s)
 #
@@ -130,10 +130,6 @@ make docker-build
 if [ "$mode" == 'dpdk' ]; then
 	# Devices for DUT machine
 	DEVICES=${DEVICES:-'--device=/dev/vfio/88 --device=/dev/vfio/89 --device=/dev/vfio/vfio'}
-	#DEVICES=${DEVICES:-'--device=/dev/vfio/69 --device=/dev/vfio/70 --device=/dev/vfio/vfio'}
-	# Devices for pktgen machine
- 	#DEVICES=${DEVICES:-'--device=/dev/vfio/113 --device=/dev/vfio/114 --device=/dev/vfio/vfio'}
-	#DEVICES=${DEVICES:-'--device=ens1f0 --device=ens1f1'}
 	PRIVS='--privileged'
 elif [ "$mode" == 'af_xdp' ]; then
 	PRIVS='--privileged'
@@ -193,8 +189,8 @@ sleep 30
 if [ "$mode" == 'af_xdp_ebpf' ]; then
 	# Setup eBPF fast path pipeline
 	docker exec bess ./bessctl run upf-ebpf
-	sleep 10
-	set_irq_affinity
+	# sleep 10
+	# set_irq_affinity
 else
 	docker exec bess ./bessctl run up4
 fi
