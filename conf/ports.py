@@ -122,7 +122,7 @@ class Port:
             print(ret)
         print(f"Setting NIC rx queue size for iface: {iface_name} DONE")
 
-    def init_port(self, idx, conf_mode):
+    def init_port(self, idx, conf_mode, bpf_prog_id=None):
         name = self.name
         num_q = len(self.workers)
         self.num_q = num_q
@@ -139,8 +139,12 @@ class Port:
             try:
                 # Initialize kernel fastpath.
                 # AF_XDP requires that num_rx_qs == num_tx_qs
-                kwargs = {"vdev" : "net_af_xdp{},iface={},start_queue=0,queue_count={}"
-                          .format(idx, name, num_q), "num_out_q": num_q, "num_inc_q": num_q}
+                if conf_mode == 'af_xdp':
+                    kwargs = {"vdev" : "net_af_xdp{},iface={},start_queue=0,queue_count={},pinned_xdp_prog_id={}"
+                            .format(idx, name, num_q, int(bpf_prog_id)), "num_out_q": num_q, "num_inc_q": num_q}
+                else:
+                    kwargs = {"vdev" : "net_af_xdp{},iface={},start_queue=0,queue_count={}"
+                            .format(idx, name, num_q), "num_out_q": num_q, "num_inc_q": num_q}
                 
                 self.init_fastpath(**kwargs)
             except:

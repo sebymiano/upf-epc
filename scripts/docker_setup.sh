@@ -23,6 +23,7 @@ pfcp_port=8805
 # mode="af_xdp_ebpf"
 #mode="af_packet"
 # mode="sim"
+# mode="xdp"
 mode="af_xdp_ebpf"
 ebpf_cores=2
 
@@ -98,13 +99,13 @@ function move_ifaces() {
 		sudo ip link set "${ifaces[$i]}" netns pause up
 		sudo ip netns exec pause ip link set "${ifaces[$i]}" promisc off
 		sudo ip netns exec pause ip link set "${ifaces[$i]}" xdp off
-		if [ "$mode" == 'af_xdp' ]; then
+		if [ "$mode" == 'af_xdp' ] || [ "$mode" == 'af_xdp_ebpf' ]; then
 			sudo ip netns exec pause ethtool --features "${ifaces[$i]}" ntuple off
 			sudo ip netns exec pause ethtool --features "${ifaces[$i]}" ntuple on
 			# sudo ip netns exec pause ethtool -N "${ifaces[$i]}" flow-type udp4 action 0
 			# sudo ip netns exec pause ethtool -N "${ifaces[$i]}" flow-type tcp4 action 0
 			# sudo ip netns exec pause ethtool -u "${ifaces[$i]}"
-		elif [ "$mode" == 'af_xdp_ebpf' ]; then
+		elif [ "$mode" == 'xdp' ]; then
 			sudo ip netns exec pause ethtool -L "${ifaces[$i]}" combined ${ebpf_cores}
 		fi
 	done
@@ -113,7 +114,7 @@ function move_ifaces() {
 
 function set_irq_affinity() {
 	for ((i = 0; i < num_ifaces; i++)); do
-		if [ "$mode" == 'af_xdp_ebpf' ]; then
+		if [ "$mode" == 'xdp' ]; then
 			sudo ip netns exec pause ${DIR}/set_irq_affinity.sh local "${ifaces[$i]}"
 		fi
 	done
@@ -131,9 +132,7 @@ if [ "$mode" == 'dpdk' ]; then
 	# Devices for DUT machine
 	DEVICES=${DEVICES:-'--device=/dev/vfio/88 --device=/dev/vfio/89 --device=/dev/vfio/vfio'}
 	PRIVS='--privileged'
-elif [ "$mode" == 'af_xdp' ]; then
-	PRIVS='--privileged'
-elif [ "$mode" == "af_xdp_ebpf" ]; then
+elif [ "$mode" == 'af_xdp' ] || [ "$mode" == 'af_xdp_ebpf' ] || [ "$mode" == 'xdp' ] ; then
 	PRIVS='--privileged'
 elif [ "$mode" == 'af_packet' ]; then
 	PRIVS='--cap-add IPC_LOCK'
@@ -155,7 +154,7 @@ sudo ln -s "$sandbox" /var/run/netns/pause
 
 case $mode in
 "dpdk" | "sim") setup_mirror_links ;;
-"af_xdp" | "af_packet" | "af_xdp_ebpf")
+"af_xdp" | "af_packet" | "af_xdp_ebpf" | "xdp")
 	move_ifaces
 	# Make sure that kernel does not send back icmp dest unreachable msg(s)
 	sudo ip netns exec pause iptables -I OUTPUT -p icmp --icmp-type port-unreachable -j DROP
@@ -186,11 +185,13 @@ docker logs bess
 # Sleep for a couple of secs before setting up the pipeline
 sleep 30
 # Setup eBPF fast path pipeline
-if [ "$mode" == 'af_xdp_ebpf' ]; then
+if [ "$mode" == 'xdp' ]; then
 	# Setup eBPF fast path pipeline
 	docker exec bess ./bessctl run upf-ebpf
 	# sleep 10
 	# set_irq_affinity
+elif [ "$mode" == 'af_xdp_ebpf' ]; then
+	docker exec bess ./bessctl run upf-ebpf-af_xdp
 else
 	docker exec bess ./bessctl run up4
 fi
