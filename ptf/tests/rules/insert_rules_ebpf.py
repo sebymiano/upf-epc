@@ -46,7 +46,6 @@ class DownlinkRuleInsertionTest(GrpceBPFTest):
     TRex traffic generator.
     """
 
-    # @autocleanup
     def runTest(self):
         n3TEID = 0
         mbr_bps = 40000 * M # 40Gbps
