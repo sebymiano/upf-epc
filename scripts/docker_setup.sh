@@ -23,8 +23,8 @@ pfcp_port=8805
 # mode="af_xdp_ebpf"
 #mode="af_packet"
 # mode="sim"
-# mode="xdp"
-mode="af_xdp_ebpf"
+mode="xdp"
+# mode="af_xdp_ebpf"
 ebpf_cores=1
 
 # Gateway interface(s)
