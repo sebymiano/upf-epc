@@ -273,7 +273,6 @@ def main():
         success = run_test(
             bess_addr=args.bess_address,
             ptfdir=args.ptf_dir,
-            trex_server_addr=args.trex_address,
             extra_args=unknown_args,
         )
         if not success:
