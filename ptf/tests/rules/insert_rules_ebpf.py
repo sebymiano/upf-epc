@@ -39,7 +39,7 @@ N3_IP = IPv4Address('10.128.13.29')
 PDN_IP = IPv4Address("11.1.1.129")
 ENB_IP = IPv4Address('10.27.19.99')
 
-class DownlinkRuleInsertionTest(TrexTest, GrpceBPFTest):
+class DownlinkRuleInsertionTest(GrpceBPFTest):
     """
     Performance baseline linerate test generating downlink traffic at 1 Mpps
     with 10k UE IPs, asserting expected performance of BESS-UPF as reported by
@@ -105,7 +105,7 @@ class DownlinkRuleInsertionTest(TrexTest, GrpceBPFTest):
         return
 
 
-class UplinkRuleInsertionTest(TrexTest, GrpceBPFTest):
+class UplinkRuleInsertionTest(GrpceBPFTest):
     """
     Performance baseline linerate test generating uplink traffic at 1 Mpps
     with 10k UE IPs, asserting expected performance of BESS-UPF as reported by
