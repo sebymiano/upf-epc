@@ -1,8 +1,8 @@
 diff --git a/drivers/net/af_xdp/rte_eth_af_xdp.c b/drivers/net/af_xdp/rte_eth_af_xdp.c
-index 2c7892bd7e..b568db56e8 100644
+index 2c7892bd7e..abb6fc6ffa 100644
 --- a/drivers/net/af_xdp/rte_eth_af_xdp.c
 +++ b/drivers/net/af_xdp/rte_eth_af_xdp.c
-@@ -126,6 +126,8 @@ struct pmd_internals {
+@@ -126,8 +126,11 @@ struct pmd_internals {
  	int max_queue_cnt;
  	int combined_queue_cnt;
  	bool shared_umem;
@@ -10,8 +10,11 @@ index 2c7892bd7e..b568db56e8 100644
 +	int pinned_bpf_prog_id;
  	char prog_path[PATH_MAX];
  	bool custom_prog_configured;
++	struct bpf_map *map;
  
-@@ -139,6 +141,7 @@ struct pmd_internals {
+ 	struct rte_ether_addr eth_addr;
+ 
+@@ -139,6 +142,7 @@ struct pmd_internals {
  #define ETH_AF_XDP_START_QUEUE_ARG		"start_queue"
  #define ETH_AF_XDP_QUEUE_COUNT_ARG		"queue_count"
  #define ETH_AF_XDP_SHARED_UMEM_ARG		"shared_umem"
@@ -19,7 +22,7 @@ index 2c7892bd7e..b568db56e8 100644
  #define ETH_AF_XDP_PROG_ARG			"xdp_prog"
  
  static const char * const valid_arguments[] = {
-@@ -146,6 +149,7 @@ static const char * const valid_arguments[] = {
+@@ -146,6 +150,7 @@ static const char * const valid_arguments[] = {
  	ETH_AF_XDP_START_QUEUE_ARG,
  	ETH_AF_XDP_QUEUE_COUNT_ARG,
  	ETH_AF_XDP_SHARED_UMEM_ARG,
@@ -27,7 +30,7 @@ index 2c7892bd7e..b568db56e8 100644
  	ETH_AF_XDP_PROG_ARG,
  	NULL
  };
-@@ -269,7 +273,7 @@ af_xdp_rx_zc(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
+@@ -269,7 +274,7 @@ af_xdp_rx_zc(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
  
  	if (rcvd == 0) {
  #if defined(XDP_USE_NEED_WAKEUP)
@@ -36,7 +39,7 @@ index 2c7892bd7e..b568db56e8 100644
  			(void)poll(rxq->fds, 1, 1000);
  #endif
  
-@@ -340,7 +344,7 @@ af_xdp_rx_cp(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
+@@ -340,7 +345,7 @@ af_xdp_rx_cp(void *queue, struct rte_mbuf **bufs, uint16_t nb_pkts)
  	rcvd = xsk_ring_cons__peek(rx, nb_pkts, &idx_rx);
  	if (rcvd == 0) {
  #if defined(XDP_USE_NEED_WAKEUP)
@@ -45,7 +48,31 @@ index 2c7892bd7e..b568db56e8 100644
  			(void)poll(rxq->fds, 1, 1000);
  #endif
  
-@@ -1097,6 +1101,106 @@ load_custom_xdp_prog(const char *prog_path, int if_index)
+@@ -1059,11 +1064,10 @@ xsk_umem_info *xdp_umem_configure(struct pmd_internals *internals,
+ }
+ 
+ static int
+-load_custom_xdp_prog(const char *prog_path, int if_index)
++load_custom_xdp_prog(const char *prog_path, int if_index, struct bpf_map **map)
+ {
+ 	int ret, prog_fd = -1;
+ 	struct bpf_object *obj;
+-	struct bpf_map *map;
+ 
+ 	ret = bpf_prog_load(prog_path, BPF_PROG_TYPE_XDP, &obj, &prog_fd);
+ 	if (ret) {
+@@ -1076,8 +1080,8 @@ load_custom_xdp_prog(const char *prog_path, int if_index)
+ 	 * traffic can be redirected to userspace. When the xsk is created,
+ 	 * libbpf inserts it into the map.
+ 	 */
+-	map = bpf_object__find_map_by_name(obj, "xsks_map");
+-	if (!map) {
++	*map = bpf_object__find_map_by_name(obj, "xsks_map");
++	if (!*map) {
+ 		AF_XDP_LOG(ERR, "Failed to find xsks_map in %s\n", prog_path);
+ 		return -1;
+ 	}
+@@ -1097,6 +1101,110 @@ load_custom_xdp_prog(const char *prog_path, int if_index)
  	return 0;
  }
  
@@ -55,7 +82,7 @@ index 2c7892bd7e..b568db56e8 100644
 +}
 +
 +static int
-+load_custom_pinned_xdp_prog(int pinned_bpf_prog_id, int if_index)
++load_custom_pinned_xdp_prog(int pinned_bpf_prog_id, int if_index, int *xsks_map_fd)
 +{
 +	int ret, prog_fd = -1;
 +	struct bpf_object *obj;
@@ -86,8 +113,10 @@ index 2c7892bd7e..b568db56e8 100644
 +		AF_XDP_LOG(ERR, "Failed alloc list for map info\n");
 +		return -1;
 +	}
-+
++	
 +	nr_maps = prog_info.nr_map_ids;
++	AF_XDP_LOG(ERR, "Number of maps for this program is: %d\n", nr_maps);
++
 +	bzero(&prog_info, prog_info_len);
 +	prog_info.nr_map_ids = nr_maps;
 +	prog_info.map_ids = ptr_to_u64(map_ids);
@@ -106,8 +135,10 @@ index 2c7892bd7e..b568db56e8 100644
 +			struct bpf_map_info map_info = {};
 +			uint32_t map_info_len = sizeof(struct bpf_map_info);
 +			if (bpf_obj_get_info_by_fd(map_fd, &map_info, &map_info_len) == 0) {
++				AF_XDP_LOG(ERR, "Found map with name: %s\n", map_info.name);
 +				if (strcmp(map_info.name, "xsks_map") == 0) {
 +					xsks_map_found = true;
++					*xsks_map_fd = map_fd;
 +					break;
 +				}
 +			} else {
@@ -124,7 +155,7 @@ index 2c7892bd7e..b568db56e8 100644
 +	 * libbpf inserts it into the map.
 +	 */
 +	if (!xsks_map_found) {
-+		AF_XDP_LOG(ERR, "Failed to find xsks_map in prof ID: %d\n", pinned_bpf_prog_id);
++		AF_XDP_LOG(ERR, "Failed to find xsks_map in prog ID: %d\n", pinned_bpf_prog_id);
 +		ret = -1;
 +		goto custom_pin_fail;
 +	}
@@ -152,26 +183,85 @@ index 2c7892bd7e..b568db56e8 100644
  static int
  xsk_configure(struct pmd_internals *internals, struct pkt_rx_queue *rxq,
  	      int ring_size)
-@@ -1132,6 +1236,18 @@ xsk_configure(struct pmd_internals *internals, struct pkt_rx_queue *rxq,
- 			goto err;
+@@ -1106,6 +1214,7 @@ xsk_configure(struct pmd_internals *internals, struct pkt_rx_queue *rxq,
+ 	int ret = 0;
+ 	int reserve_size = ETH_AF_XDP_DFLT_NUM_DESCS;
+ 	struct rte_mbuf *fq_bufs[reserve_size];
++	int xsks_map_fd = -1;
+ 
+ 	rxq->umem = xdp_umem_configure(internals, rxq);
+ 	if (rxq->umem == NULL)
+@@ -1122,16 +1231,33 @@ xsk_configure(struct pmd_internals *internals, struct pkt_rx_queue *rxq,
+ 	cfg.bind_flags |= XDP_USE_NEED_WAKEUP;
+ #endif
+ 
+-	if (strnlen(internals->prog_path, PATH_MAX) &&
+-				!internals->custom_prog_configured) {
+-		ret = load_custom_xdp_prog(internals->prog_path,
+-					   internals->if_index);
+-		if (ret) {
+-			AF_XDP_LOG(ERR, "Failed to load custom XDP program %s\n",
+-					internals->prog_path);
+-			goto err;
++	if (strnlen(internals->prog_path, PATH_MAX)) {
++		if (!internals->custom_prog_configured) {
++			ret = load_custom_xdp_prog(internals->prog_path,
++									   internals->if_index,
++									   &internals->map);
++			if (ret) {
++				AF_XDP_LOG(ERR, "Failed to load custom XDP program %s\n",
++						internals->prog_path);
++				goto err;
++			}
++			internals->custom_prog_configured = 1;
  		}
- 		internals->custom_prog_configured = 1;
-+	} else if (internals->use_pinned_bpf_prog && 
-+			   !internals->custom_prog_configured) {
+-		internals->custom_prog_configured = 1;
++		cfg.libbpf_flags |= XSK_LIBBPF_FLAGS__INHIBIT_PROG_LOAD;
++	} else if (internals->use_pinned_bpf_prog) {
++		if(!internals->custom_prog_configured) {
++			ret = load_custom_pinned_xdp_prog(internals->pinned_bpf_prog_id,
++											  internals->if_index,
++											  &xsks_map_fd);
 +
-+		ret = load_custom_pinned_xdp_prog(internals->pinned_bpf_prog_id,
-+					   internals->if_index);
-+
-+		if (ret) {
-+			AF_XDP_LOG(ERR, "Failed to load custom pinned XDP program %s\n",
-+					internals->prog_path);
-+			goto err;
++			if (ret) {
++				AF_XDP_LOG(ERR, "Failed to load custom pinned XDP program %s\n",
++						internals->prog_path);
++				goto err;
++			}
++			internals->custom_prog_configured = 1;
 +		}
-+		internals->custom_prog_configured = 1;
++		cfg.libbpf_flags |= XSK_LIBBPF_FLAGS__INHIBIT_PROG_LOAD;
  	}
  
  	if (internals->shared_umem)
-@@ -1419,7 +1535,7 @@ xdp_get_channels_info(const char *if_name, int *max_queues,
+@@ -1161,8 +1287,26 @@ xsk_configure(struct pmd_internals *internals, struct pkt_rx_queue *rxq,
+ 		goto err;
+ 	}
+ 
++	/* insert the xsk into the xsks_map */
++	if (internals->custom_prog_configured) {
++		int err, fd;
++
++		fd = xsk_socket__fd(rxq->xsk);
++		if (!internals->use_pinned_bpf_prog) {
++			xsks_map_fd = bpf_map__fd(internals->map);
++		}
++		err = bpf_map_update_elem(xsks_map_fd, &rxq->xsk_queue_idx, &fd, 0);
++		if (err) {
++			AF_XDP_LOG(ERR, "Failed to insert xsk in map.\n");
++			goto out_xsk;
++		}
++	}
++
+ 	return 0;
+ 
++out_xsk:
++	xsk_socket__delete(rxq->xsk);
++
+ err:
+ 	if (__atomic_sub_fetch(&rxq->umem->refcnt, 1, __ATOMIC_ACQUIRE) == 0)
+ 		xdp_umem_destroy(rxq->umem);
+@@ -1419,7 +1563,7 @@ xdp_get_channels_info(const char *if_name, int *max_queues,
  
  static int
  parse_parameters(struct rte_kvargs *kvlist, char *if_name, int *start_queue,
@@ -180,7 +270,7 @@ index 2c7892bd7e..b568db56e8 100644
  {
  	int ret;
  
-@@ -1445,6 +1561,13 @@ parse_parameters(struct rte_kvargs *kvlist, char *if_name, int *start_queue,
+@@ -1445,6 +1589,13 @@ parse_parameters(struct rte_kvargs *kvlist, char *if_name, int *start_queue,
  	if (ret < 0)
  		goto free_kvlist;
  
@@ -194,7 +284,7 @@ index 2c7892bd7e..b568db56e8 100644
  	ret = rte_kvargs_process(kvlist, ETH_AF_XDP_PROG_ARG,
  				 &parse_prog_arg, prog_path);
  	if (ret < 0)
-@@ -1488,7 +1611,7 @@ get_iface_info(const char *if_name,
+@@ -1488,7 +1639,7 @@ get_iface_info(const char *if_name,
  static struct rte_eth_dev *
  init_internals(struct rte_vdev_device *dev, const char *if_name,
  		int start_queue_idx, int queue_cnt, int shared_umem,
@@ -203,7 +293,7 @@ index 2c7892bd7e..b568db56e8 100644
  {
  	const char *name = rte_vdev_device_name(dev);
  	const unsigned int numa_node = dev->device.numa_node;
-@@ -1507,6 +1630,14 @@ init_internals(struct rte_vdev_device *dev, const char *if_name,
+@@ -1507,6 +1658,14 @@ init_internals(struct rte_vdev_device *dev, const char *if_name,
  	strlcpy(internals->prog_path, prog_path, PATH_MAX);
  	internals->custom_prog_configured = 0;
  
@@ -218,7 +308,7 @@ index 2c7892bd7e..b568db56e8 100644
  #ifndef ETH_AF_XDP_SHARED_UMEM
  	if (shared_umem) {
  		AF_XDP_LOG(ERR, "Shared UMEM feature not available. "
-@@ -1592,6 +1723,7 @@ rte_pmd_af_xdp_probe(struct rte_vdev_device *dev)
+@@ -1592,6 +1751,7 @@ rte_pmd_af_xdp_probe(struct rte_vdev_device *dev)
  	int xsk_queue_cnt = ETH_AF_XDP_DFLT_QUEUE_COUNT;
  	int shared_umem = 0;
  	char prog_path[PATH_MAX] = {'\0'};
@@ -226,7 +316,7 @@ index 2c7892bd7e..b568db56e8 100644
  	struct rte_eth_dev *eth_dev = NULL;
  	const char *name;
  
-@@ -1621,7 +1753,7 @@ rte_pmd_af_xdp_probe(struct rte_vdev_device *dev)
+@@ -1621,7 +1781,7 @@ rte_pmd_af_xdp_probe(struct rte_vdev_device *dev)
  		dev->device.numa_node = rte_socket_id();
  
  	if (parse_parameters(kvlist, if_name, &xsk_start_queue_idx,
@@ -235,7 +325,7 @@ index 2c7892bd7e..b568db56e8 100644
  		AF_XDP_LOG(ERR, "Invalid kvargs value\n");
  		return -EINVAL;
  	}
-@@ -1632,7 +1764,7 @@ rte_pmd_af_xdp_probe(struct rte_vdev_device *dev)
+@@ -1632,7 +1792,7 @@ rte_pmd_af_xdp_probe(struct rte_vdev_device *dev)
  	}
  
  	eth_dev = init_internals(dev, if_name, xsk_start_queue_idx,
@@ -244,7 +334,7 @@ index 2c7892bd7e..b568db56e8 100644
  	if (eth_dev == NULL) {
  		AF_XDP_LOG(ERR, "Failed to init internals\n");
  		return -1;
-@@ -1677,4 +1809,5 @@ RTE_PMD_REGISTER_PARAM_STRING(net_af_xdp,
+@@ -1677,4 +1837,5 @@ RTE_PMD_REGISTER_PARAM_STRING(net_af_xdp,
  			      "start_queue=<int> "
  			      "queue_count=<int> "
  			      "shared_umem=<int> "

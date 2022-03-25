@@ -77,7 +77,7 @@ RUN ./xdp-scripts/install-dependencies.sh && \
 #     update-alternatives --install /usr/bin/clang clang /usr/bin/clang-12 100
 
 WORKDIR /libxdp
-ARG LIBXDP_VER=master
+ARG LIBXDP_VER=libxdp-cpp
 RUN git clone -b libxdp-cpp https://github.com/sebymiano/xdp-tools.git && \
     cd xdp-tools && ./configure && make libxdp && \
     sudo make libxdp install
@@ -187,7 +187,7 @@ RUN ./xdp-scripts/install-dependencies.sh && \
 #     update-alternatives --install /usr/bin/clang clang /usr/bin/clang-12 100
 
 WORKDIR /libxdp
-ARG LIBXDP_VER=master
+ARG LIBXDP_VER=libxdp-cpp
 RUN git clone -b libxdp-cpp https://github.com/sebymiano/xdp-tools.git && \
     cd xdp-tools && ./configure && make libxdp && \
     sudo make libxdp install && sudo ldconfig
