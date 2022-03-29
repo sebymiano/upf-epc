@@ -10,6 +10,7 @@ from pkt_utils import GTPU_PORT, pkt_add_gtpu
 from trex_test import TrexTest
 from grpc_eBPF_test import *
 from trex_utils import *
+from progressbar import ProgressBar, Percentage, Bar, ETA, AdaptiveETA
 
 from trex_stl_lib.api import (
     STLVM,
@@ -19,6 +20,11 @@ from trex_stl_lib.api import (
     STLFlowLatencyStats,
 )
 import ptf.testutils as testutils
+
+widgets = [Percentage(),
+           ' ', Bar(),
+           ' ', ETA(),
+           ' ', AdaptiveETA()]
 
 ACCESS_DEST_MAC = "f8:f2:1e:b2:43:00"
 CORE_DEST_MAC = "f8:f2:1e:b2:43:01"
@@ -57,7 +63,7 @@ class DownlinkRuleInsertionTest(GrpceBPFTest):
 
         accessIP = IPv4Address('10.128.13.29')
         enbIP = IPv4Address('10.27.19.99') # arbitrary ip for nonexistent enodeB
-
+        pbar = ProgressBar(widgets=widgets, maxval=UE_COUNT).start()
         # program UPF for downlink traffic by installing PDRs and FARs
         print("Installing PDRs and FARs...")
         for i in range(UE_COUNT):
@@ -101,6 +107,8 @@ class DownlinkRuleInsertionTest(GrpceBPFTest):
             )
             self.addApplicationQER(qer)
 
+            pbar.update(i)
+
         return
 
 
@@ -120,6 +128,8 @@ class UplinkRuleInsertionTest(GrpceBPFTest):
 
         startIP = IPv4Address('16.0.0.1')
         endIP = startIP + UE_COUNT - 1
+
+        pbar = ProgressBar(widgets=widgets, maxval=UE_COUNT).start()
 
         # program UPF for uplink traffic by installing PDRs and FARs
         print("Installing PDRs and FARs...")
@@ -159,6 +169,8 @@ class UplinkRuleInsertionTest(GrpceBPFTest):
                 burstDurationMs=burst_ms,
             )
             self.addApplicationQER(qer)
+
+            pbar.update(i)
 
         return
 

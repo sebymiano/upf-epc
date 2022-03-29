@@ -79,7 +79,7 @@ ENV RUNTIME_DEPS \
 RUN apt update && \
     apt install -y $RUNTIME_DEPS && \
     rm -rf /var/lib/apt/lists/*
-RUN pip3 install --no-cache-dir scipy==1.5.4 numpy==1.19.4 matplotlib==3.3.3 pyyaml==5.4.1 
+RUN pip3 install --no-cache-dir scipy==1.5.4 numpy==1.19.4 matplotlib==3.3.3 pyyaml==5.4.1 progressbar2==3.47.0
 
 ENV TREX_EXT_LIBS=${TREX_EXT_LIBS}
 ENV PYTHONPATH=${TREX_EXT_LIBS}:${TREX_LIBS}
