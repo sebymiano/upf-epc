@@ -96,18 +96,18 @@ function setup_mirror_links() {
 # Set up interfaces in the network namespace. For non-"dpdk" mode(s)
 function move_ifaces() {
 	for ((i = 0; i < num_ifaces; i++)); do
+		sudo ip link set "${ifaces[$i]}" up
 		sudo ip link set "${ifaces[$i]}" netns pause up
 		sudo ip netns exec pause ip link set "${ifaces[$i]}" promisc off
 		sudo ip netns exec pause ip link set "${ifaces[$i]}" xdp off
 		if [ "$mode" == 'af_xdp' ] || [ "$mode" == 'af_xdp_ebpf' ]; then
 			sudo ip netns exec pause ethtool --features "${ifaces[$i]}" ntuple off
-			sudo ip netns exec pause ethtool --features "${ifaces[$i]}" ntuple on
+			# sudo ip netns exec pause ethtool --features "${ifaces[$i]}" ntuple on
 			# sudo ip netns exec pause ethtool -N "${ifaces[$i]}" flow-type udp4 action 0
 			# sudo ip netns exec pause ethtool -N "${ifaces[$i]}" flow-type tcp4 action 0
 			# sudo ip netns exec pause ethtool -u "${ifaces[$i]}"
-		elif [ "$mode" == 'xdp' ]; then
-			sudo ip netns exec pause ethtool -L "${ifaces[$i]}" combined ${ebpf_cores}
 		fi
+		sudo ip netns exec pause ip link set "${ifaces[$i]}" up
 	done
 	setup_addrs
 }
@@ -116,6 +116,14 @@ function set_irq_affinity() {
 	for ((i = 0; i < num_ifaces; i++)); do
 		if [ "$mode" == 'xdp' ]; then
 			sudo ip netns exec pause ${DIR}/set_irq_affinity.sh local "${ifaces[$i]}"
+		fi
+	done
+}
+
+function set_xdp_cores() {
+	for ((i = 0; i < num_ifaces; i++)); do
+		if [ "$mode" == 'xdp' ]; then
+			sudo ip netns exec pause ethtool -L "${ifaces[$i]}" combined ${ebpf_cores}
 		fi
 	done
 }
@@ -189,6 +197,7 @@ if [ "$mode" == 'xdp' ]; then
 	# Setup eBPF fast path pipeline
 	docker exec bess ./bessctl run upf-ebpf
 	# sleep 10
+	# set_xdp_cores
 	# set_irq_affinity
 elif [ "$mode" == 'af_xdp_ebpf' ]; then
 	docker exec bess ./bessctl run upf-ebpf-af_xdp
