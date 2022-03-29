@@ -31,7 +31,6 @@ BESS_CORE_PORT = 1
 
 # test specs
 DURATION = 10
-RATE = 100_000  # 100 Kpps
 UE_COUNT = 10_000 # 10k UEs
 PKT_SIZE = 64
 
@@ -224,13 +223,23 @@ class UplinkPerformanceBaselineTest(TrexTest, GrpceBPFTest):
             size=4,
             op="random",
         )
-        vm.var(
-            name="srcPort",
-            min_value=1024,
-            max_value=int(1024 + UE_COUNT),
-            size=2,
-            op="random",
-        )
+
+        if (UE_COUNT > 65535 - 1024):
+            vm.var(
+                name="srcPort",
+                min_value=1024,
+                max_value=int(65534),
+                size=2,
+                op="random",
+            )
+        else:
+            vm.var(
+                name="srcPort",
+                min_value=1024,
+                max_value=int(1024 + UE_COUNT),
+                size=2,
+                op="random",
+            )
         vm.write(fv_name="srcPort", pkt_offset="UDP.sport")
         vm.write(fv_name="inner_src", pkt_offset=62)
         vm.fix_chksum()
