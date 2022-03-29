@@ -559,7 +559,7 @@ class GrpceBPFTest(BaseTest):
         return rates()
 
     def addApplicationQER(self, qer, debug=False):
-        ''' installs uplink and downlink applicaiton QER '''
+        ''' installs uplink and downlink application QER '''
         rates = self._calcRates(
             qer.ulGbr,
             qer.ulMbr,
