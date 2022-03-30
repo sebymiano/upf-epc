@@ -142,7 +142,7 @@
         "dnn": "internet",
         "http_port": "8080",
         "enable_ue_ip_alloc": false,
-        "ue_ip_pool": "10.250.0.0/16",
+        "ue_ip_pool": "16.0.0.1/16",
         "" : "use_fqdn: true",
         "" : "hostname: upf-0"
     },

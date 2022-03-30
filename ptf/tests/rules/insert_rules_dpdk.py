@@ -8,7 +8,7 @@ from pprint import pprint
 from scapy.layers.l2 import Ether
 from pkt_utils import GTPU_PORT, pkt_add_gtpu
 from trex_test import TrexTest
-from grpc_eBPF_test import *
+from grpc_test import *
 from trex_utils import *
 from progressbar import ProgressBar, Percentage, Bar, ETA, AdaptiveETA
 
@@ -37,13 +37,14 @@ BESS_CORE_PORT = 1
 
 # test specs
 DURATION = 10
-UE_COUNT = 100_000 # 10k UEs
+RATE = 100_000  # 100 Kpps
+UE_COUNT = 10_000 # 10k UEs
 PKT_SIZE = 64
 
 N3_IP = IPv4Address('198.18.0.1')
 ENB_IP = IPv4Address('11.1.1.129')
 
-class DownlinkRuleInsertionTest(GrpceBPFTest):
+class DownlinkRuleInsertionTest(GrpcTest):
     """
     Performance baseline linerate test generating downlink traffic at 1 Mpps
     with 10k UE IPs, asserting expected performance of BESS-UPF as reported by
@@ -94,7 +95,7 @@ class DownlinkRuleInsertionTest(GrpceBPFTest):
 
             # install N6 DL/UL application QER
             qer = self.createQER(
-                gate=GATE_METER,
+                gate=GATE_UNMETER,
                 qerID=1,
                 fseID=n3TEID + i + 1,
                 ulMbr=mbr_kbps,
@@ -108,7 +109,7 @@ class DownlinkRuleInsertionTest(GrpceBPFTest):
         return
 
 
-class UplinkRuleInsertionTest(GrpceBPFTest):
+class UplinkRuleInsertionTest(GrpcTest):
     """
     Performance baseline linerate test generating uplink traffic at 1 Mpps
     with 10k UE IPs, asserting expected performance of BESS-UPF as reported by
