@@ -13,15 +13,15 @@ function install_linux_bpftool {
   echo -e "${COLOR_GREEN} Installing Linux bpftool v${BPFTOOL_VERSION} ${COLOR_OFF}"
 
   # Let's first check if bpftool is available
-  local bpftool_check1=$(command -v bpftool &> /dev/null; echo $?)
-  local bpftool_check2=$($SUDO bpftool --help &> /dev/null; echo $?)
+  # local bpftool_check1=$(command -v bpftool &> /dev/null; echo $?)
+  # local bpftool_check2=$($SUDO bpftool --help &> /dev/null; echo $?)
 
-  if [ $bpftool_check1 -ne 0 ] || [ $bpftool_check2 -ne 0 ]; then
-    echo "bpftool not found"
-  else
-    echo -e "${COLOR_GREEN} Linux bpftool is already installed ${COLOR_OFF}"
-    return
-  fi
+  # if [ $bpftool_check1 -ne 0 ] || [ $bpftool_check2 -ne 0 ]; then
+  #   echo "bpftool not found"
+  # else
+  #   echo -e "${COLOR_GREEN} Linux bpftool is already installed ${COLOR_OFF}"
+  #   return
+  # fi
 
   sudo rm -rf "${DIR}/deps"
 
