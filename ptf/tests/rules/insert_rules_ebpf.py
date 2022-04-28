@@ -37,10 +37,10 @@ BESS_CORE_PORT = 1
 
 # test specs
 DURATION = 10
-UE_COUNT = 100_000 # 10k UEs
+UE_COUNT = 100_000 # 100k UEs
 PKT_SIZE = 64
 
-N3_IP = IPv4Address('198.18.0.1')
+N3_IP = IPv4Address('10.128.13.29')
 ENB_IP = IPv4Address('11.1.1.129')
 
 class DownlinkRuleInsertionTest(GrpceBPFTest):

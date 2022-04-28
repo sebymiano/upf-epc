@@ -724,7 +724,7 @@ def autocleanup(f):
 
         try:
             # Clear QoS stats on BESS before test runs
-            test.getSessionStats(quiet=True)
+            # test.getSessionStats(quiet=True)
 
             return f(*args, **kwargs)
 
