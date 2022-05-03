@@ -10,6 +10,7 @@ from pkt_utils import GTPU_PORT, pkt_add_gtpu
 from trex_test import TrexTest
 from grpc_eBPF_test import *
 from trex_utils import *
+from progressbar import ProgressBar, Percentage, Bar, ETA, AdaptiveETA
 
 from trex_stl_lib.api import (
     STLVM,
@@ -19,6 +20,11 @@ from trex_stl_lib.api import (
     STLFlowLatencyStats,
 )
 import ptf.testutils as testutils
+
+widgets = [Percentage(),
+           ' ', Bar(),
+           ' ', ETA(),
+           ' ', AdaptiveETA()]
 
 ACCESS_DEST_MAC = "f8:f2:1e:b2:43:00"
 CORE_DEST_MAC = "f8:f2:1e:b2:43:01"
@@ -30,9 +36,10 @@ BESS_ACCESS_PORT = 0
 BESS_CORE_PORT = 1
 
 # test specs
-DURATION = 10
+DURATION = 60
+RATE = 100_000  # 100 Kpps
 UE_COUNT = 10_000 # 10k UEs
-PKT_SIZE = 64
+PKT_SIZE = 128
 
 N3_IP = IPv4Address('10.128.13.29')
 PDN_IP = IPv4Address("11.1.1.129")
@@ -55,9 +62,7 @@ class DownlinkPerformanceBaselineTest(TrexTest, GrpceBPFTest):
         startIP = IPv4Address('16.0.0.1')
         endIP = startIP + UE_COUNT - 1
 
-        accessIP = IPv4Address('10.128.13.29')
-        enbIP = IPv4Address('10.27.19.99') # arbitrary ip for nonexistent enodeB
-
+        pbar = ProgressBar(widgets=widgets, maxval=UE_COUNT).start()
         # program UPF for downlink traffic by installing PDRs and FARs
         print("Installing PDRs and FARs...")
         for i in range(UE_COUNT):
@@ -83,8 +88,8 @@ class DownlinkPerformanceBaselineTest(TrexTest, GrpceBPFTest):
                 applyAction = ACTION_FORWARD,
                 dstIntf = DST_ACCESS,
                 tunnelType = 0x1,
-                tunnelIP4Src = int(accessIP),
-                tunnelIP4Dst = int(enbIP), # only one eNB to send to downlink
+                tunnelIP4Src = int(N3_IP),
+                tunnelIP4Dst = int(ENB_IP), # only one eNB to send to downlink
                 tunnelTEID = 0,
                 tunnelPort = GTPU_PORT,
             )
@@ -100,6 +105,8 @@ class DownlinkPerformanceBaselineTest(TrexTest, GrpceBPFTest):
                 burstDurationMs=burst_ms,
             )
             self.addApplicationQER(qer)
+
+            pbar.update(i)
 
         # set up trex to send traffic thru UPF
         print("Setting up TRex client...")
@@ -121,7 +128,7 @@ class DownlinkPerformanceBaselineTest(TrexTest, GrpceBPFTest):
         )
         stream = STLStream(
             packet=STLPktBuilder(pkt=pkt, vm=vm),
-            mode=STLTXCont(percentage=100),
+            mode=STLTXCont(pps=RATE),
             flow_stats=STLFlowLatencyStats(pg_id=BESS_ACCESS_PORT),
         )
         self.trex_client.add_streams(stream, ports=[BESS_CORE_PORT])
@@ -150,6 +157,7 @@ class DownlinkPerformanceBaselineTest(TrexTest, GrpceBPFTest):
         print(f"Sent packets at rate: {tx_packets_rate:.2f} Mpps")
         print(f"Received packets at rate: {rx_packets_rate:.2f} Mpps")
 
+        print(f"Average latency is {lat_stats.average} us")
         print(f"99.9th %ile latency is {lat_stats.percentile_99_9} us")
         print(f"Jitter is {lat_stats.jitter} us")
 
@@ -174,6 +182,7 @@ class UplinkPerformanceBaselineTest(TrexTest, GrpceBPFTest):
         startIP = IPv4Address('16.0.0.1')
         endIP = startIP + UE_COUNT - 1
 
+        pbar = ProgressBar(widgets=widgets, maxval=UE_COUNT).start()
         # program UPF for uplink traffic by installing PDRs and FARs
         print("Installing PDRs and FARs...")
         for i in range(UE_COUNT):
@@ -212,6 +221,8 @@ class UplinkPerformanceBaselineTest(TrexTest, GrpceBPFTest):
                 burstDurationMs=burst_ms,
             )
             self.addApplicationQER(qer)
+
+            pbar.update(i)
 
         # set up trex to send traffic thru UPF
         print("Setting up TRex client...")
@@ -260,7 +271,7 @@ class UplinkPerformanceBaselineTest(TrexTest, GrpceBPFTest):
 
         stream = STLStream(
             packet=STLPktBuilder(pkt=gtpu_pkt, vm=vm),
-            mode=STLTXCont(percentage=100),
+            mode=STLTXCont(pps=RATE),
             flow_stats=STLFlowLatencyStats(pg_id=BESS_CORE_PORT),
         )
         self.trex_client.add_streams(stream, ports=[BESS_ACCESS_PORT])
@@ -289,6 +300,7 @@ class UplinkPerformanceBaselineTest(TrexTest, GrpceBPFTest):
         print(f"Sent packets at rate: {tx_packets_rate:.2f} Mpps")
         print(f"Received packets at rate: {rx_packets_rate:.2f} Mpps")
 
+        print(f"Average latency is {lat_stats.average} us")
         print(f"99.9th %ile latency is {lat_stats.percentile_99_9} us")
         print(f"Jitter is {lat_stats.jitter} us")
 
