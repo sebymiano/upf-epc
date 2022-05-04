@@ -38,6 +38,7 @@ BESS_CORE_PORT = 1
 # test specs
 DURATION = 60
 RATE = 100_000  # 100 Kpps
+# RATE = 4_000_000  # 4 Mpps
 UE_COUNT = 10_000 # 10k UEs
 PKT_SIZE = 128
 
@@ -158,6 +159,7 @@ class DownlinkPerformanceBaselineTest(TrexTest, GrpceBPFTest):
         print(f"Received packets at rate: {rx_packets_rate:.2f} Mpps")
 
         print(f"Average latency is {lat_stats.average} us")
+        print(f"50th %ile (median) latency is {lat_stats.percentile_50} us")
         print(f"99.9th %ile latency is {lat_stats.percentile_99_9} us")
         print(f"Jitter is {lat_stats.jitter} us")
 
@@ -301,6 +303,7 @@ class UplinkPerformanceBaselineTest(TrexTest, GrpceBPFTest):
         print(f"Received packets at rate: {rx_packets_rate:.2f} Mpps")
 
         print(f"Average latency is {lat_stats.average} us")
+        print(f"50th %ile (median) latency is {lat_stats.percentile_50} us")
         print(f"99.9th %ile latency is {lat_stats.percentile_99_9} us")
         print(f"Jitter is {lat_stats.jitter} us")
 
